@@ -22,6 +22,15 @@
     ========================================================================
 --]]
 
+-- ================= 0. AUTO-QUEUE FOR PERSISTENCE =================
+-- This block ensures the script re-queues itself every time it loads,
+-- allowing it to survive Lobby <-> Game transitions indefinitely.
+local SCRIPT_URL = "https://raw.githubusercontent.com/OWpop/jubilant-doodle/main/main.lua"
+if queue_on_teleport then
+    -- We add ?t=tick() to bypass GitHub/Executor caching
+    queue_on_teleport('loadstring(game:HttpGet("' .. SCRIPT_URL .. '?t="..tostring(tick())))()')
+end
+
 -- ================= 1. Constants & Services =================
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
@@ -39,7 +48,6 @@ local playerGui = player:WaitForChild("PlayerGui")
 local GUI_NAME = "OWP_PetaHub_V14_3_" .. tostring(math.random(10000, 99999))
 local CONFIG_FILE_NAME = "OWP_PetaHub_Config.json"
 local FONT_BOLD = Enum.Font.SourceSansBold
-
 -- Colors
 local COLOR_PRIMARY_BG = Color3.fromRGB(25, 25, 25)
 local COLOR_SECONDARY_BG = Color3.fromRGB(40, 40, 40)
@@ -88,8 +96,7 @@ local Engine = {
     },
     ESPBeams = {},
     ESPAttachments = {},
-    ESPConnections = {},
-    ESPUpdateRunning = false,
+    ESPConnections = {},    ESPUpdateRunning = false,
     NoClipConnection = nil,
     FullBrightConnection = nil,
     AntiVoidConnection = nil,
@@ -138,7 +145,6 @@ local function SaveConfig()
 end
 
 LoadConfig()
-
 -- ================= 4. Helper Functions =================
 local function GetDictKeys(dict)
     local keys = {}
@@ -188,8 +194,7 @@ local function isWithinRelativeBounds(targetPos, playerPos)
     local offset = targetPos - playerPos
     if math.abs(offset.Y) > RELATIVE_Y_BOUND then return false end
     if math.abs(offset.X) > RELATIVE_XZ_BOUND then return false end
-    if math.abs(offset.Z) > RELATIVE_XZ_BOUND then return false end
-    return true
+    if math.abs(offset.Z) > RELATIVE_XZ_BOUND then return false end    return true
 end
 
 -- ================= 5. Master Cache System =================
@@ -238,8 +243,7 @@ for _, obj in ipairs(Workspace:GetDescendants()) do CategorizeObject(obj) end
 Workspace.DescendantAdded:Connect(CategorizeObject)
 
 Workspace.DescendantRemoving:Connect(function(obj)
-    Engine.Cache.Keys[obj] = nil
-    Engine.Cache.Fires[obj] = nil
+    Engine.Cache.Keys[obj] = nil    Engine.Cache.Fires[obj] = nil
     Engine.Cache.Prompts[obj] = nil
 end)
 
@@ -288,7 +292,6 @@ local function createEspForItem(obj)
 	beam.Transparency = NumberSequence.new(Config.FullBright and 0.1 or 0.3)
 	beam.LightEmission = Config.FullBright and 0.6 or 0.35
 	beam.Parent = Workspace:FindFirstChildOfClass("Terrain") or Workspace
-
 	Engine.ESPBeams[obj] = beam
 	Engine.ESPAttachments[obj] = targetAttach
 
@@ -338,8 +341,7 @@ local function hideFire(obj)
     if obj:IsA("ProximityPrompt") or obj:IsA("ParticleEmitter") or obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") then
         if obj.Parent and obj.Parent:IsA("BasePart") and obj.Parent.Size.Magnitude <= 50 then
             target = obj.Parent
-        end
-    end
+        end    end
     if Engine.HiddenFires[target] then return end
     Engine.HiddenFires[target] = {Parent = target.Parent}
     target.Parent = nil
@@ -365,8 +367,7 @@ RunService.Stepped:Connect(function()
                 if hum.WalkSpeed ~= desiredSpeed then hum.WalkSpeed = desiredSpeed end
             else Engine.SpeedEnforceRunning = false end
         elseif Config.AntiFreeze and hum.WalkSpeed == 0 then
-            pcall(function() hum.WalkSpeed = desiredSpeed end)
-        end
+            pcall(function() hum.WalkSpeed = desiredSpeed end) end
     end
 end)
 
@@ -389,8 +390,7 @@ task.spawn(function()
                     end
                 end
             end
-        end
-    end
+        end    end
 end)
 
 -- ================= 8. UI Generation & Factory Pattern =================
@@ -439,8 +439,7 @@ local function BuildUI()
 
     local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
     scrollFrame.Size = UDim2.new(1, 0, 1, -25)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.ScrollBarThickness = 4
+    scrollFrame.BackgroundTransparency = 1    scrollFrame.ScrollBarThickness = 4
     scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 
     local uiListLayout = Instance.new("UIListLayout", scrollFrame)
@@ -489,8 +488,7 @@ local function BuildUI()
             
             if feature.Key == "TeleportHUD" and activeTpButton then
                 activeTpButton.Visible = Config.TeleportHUD
-            end
-        end)
+            end        end)
         updateVisuals()
     end
 
@@ -539,7 +537,6 @@ local function BuildUI()
     activeScreenGui = screenGui
     activeTpButton = tpButton
 end
-
 -- ================= 9. Feature Registration List =================
 FeatureList = {
     {Name = "Speed", Key = "SpeedIndex", Type = "Cycle", CycleOptions = WALK_SPEEDS, Action = function(val)
@@ -589,8 +586,7 @@ FeatureList = {
                 end
             end)
         end
-    end},
-    
+    end},    
     {Name = "Full Bright", Key = "FullBright", Type = "Toggle", Action = function(val)
         if val then
             Engine.FullBrightConnection = RunService.RenderStepped:Connect(function()
@@ -641,7 +637,6 @@ FeatureList = {
     {Name = "Anti-Freeze", Key = "AntiFreeze", Type = "Toggle", Action = nil}
 }
 
-
 -- ================= 10. Initialization, Failsafes & Hooks =================
 
 -- Initial Load
@@ -689,8 +684,7 @@ task.spawn(function()
                     uiMissingTime = -9999 -- Prevent spamming the fallback
                 end
             end
-        else
-            uiMissingTime = 0
+        else            uiMissingTime = 0
         end
     end
 end)
