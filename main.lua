@@ -1,35 +1,17 @@
---[[
-    PETAPETA: School of Nightmares V14.3 (Phase 3.3: Queue Instructions & Failsafe Refinement)
-    By: OtherWisePop
-    USE RESPONSIBLY AND AT YOUR OWN RISK.
-    
-    ========================================================================
-    ⚠️ IMPORTANT NOTE ON TELEPORTING (Lobby <-> Game)
-    
-    This script features a "Watchdog" that automatically repairs the UI 
-    during seamless in-game resets or cutscenes.
-    
-    HOWEVER, PETAPETA uses "Hard Place Teleports" (Roblox loading screens) 
-    between the Lobby and the Game. No script survives this naturally.
-    
-    To keep the script active across rounds, you MUST use your executor's 
-    auto-inject feature or queue it. For example, using a GitHub link:
-    
-    queue_on_teleport('loadstring(game:HttpGet("YOUR_RAW_GITHUB_LINK_HERE?t="..tostring(tick())))()')
-    
-    (Note: queue_on_teleport is consumed after one use. For full automation, 
-    place the loadstring in your executor's "auto-execute" folder).
-    ========================================================================
---]]
+-- ================= 0. SINGLETON CHECK & AUTO-QUEUE =================
+if _G.OWP_Hub_Running then return end
+_G.OWP_Hub_Running = true
 
--- ================= 0. AUTO-QUEUE FOR PERSISTENCE =================
--- This block ensures the script re-queues itself every time it loads,
--- allowing it to survive Lobby <-> Game transitions indefinitely.
 local SCRIPT_URL = "https://raw.githubusercontent.com/OWpop/jubilant-doodle/main/main.lua"
 if queue_on_teleport then
-    -- We add ?t=tick() to bypass GitHub/Executor caching
     queue_on_teleport('loadstring(game:HttpGet("' .. SCRIPT_URL .. '?t="..tostring(tick())))()')
 end
+
+--[[
+    PETAPETA: School of Nightmares V14.5 (Phase 3.5: Architectural Purification)
+    By: OtherWisePop
+    USE RESPONSIBLY AND AT YOUR OWN RISK.
+--]]
 
 -- ================= 1. Constants & Services =================
 local RunService = game:GetService("RunService")
@@ -45,9 +27,10 @@ if not player then
 end
 local playerGui = player:WaitForChild("PlayerGui")
 
-local GUI_NAME = "OWP_PetaHub_V14_3_" .. tostring(math.random(10000, 99999))
+local GUI_NAME = "OWP_PetaHub_V14_5_" .. tostring(math.random(10000, 99999))
 local CONFIG_FILE_NAME = "OWP_PetaHub_Config.json"
 local FONT_BOLD = Enum.Font.SourceSansBold
+
 -- Colors
 local COLOR_PRIMARY_BG = Color3.fromRGB(25, 25, 25)
 local COLOR_SECONDARY_BG = Color3.fromRGB(40, 40, 40)
@@ -96,7 +79,8 @@ local Engine = {
     },
     ESPBeams = {},
     ESPAttachments = {},
-    ESPConnections = {},    ESPUpdateRunning = false,
+    ESPConnections = {},
+    ESPUpdateRunning = false,
     NoClipConnection = nil,
     FullBrightConnection = nil,
     AntiVoidConnection = nil,
@@ -145,6 +129,7 @@ local function SaveConfig()
 end
 
 LoadConfig()
+
 -- ================= 4. Helper Functions =================
 local function GetDictKeys(dict)
     local keys = {}
@@ -194,7 +179,8 @@ local function isWithinRelativeBounds(targetPos, playerPos)
     local offset = targetPos - playerPos
     if math.abs(offset.Y) > RELATIVE_Y_BOUND then return false end
     if math.abs(offset.X) > RELATIVE_XZ_BOUND then return false end
-    if math.abs(offset.Z) > RELATIVE_XZ_BOUND then return false end    return true
+    if math.abs(offset.Z) > RELATIVE_XZ_BOUND then return false end
+    return true
 end
 
 -- ================= 5. Master Cache System =================
@@ -243,7 +229,8 @@ for _, obj in ipairs(Workspace:GetDescendants()) do CategorizeObject(obj) end
 Workspace.DescendantAdded:Connect(CategorizeObject)
 
 Workspace.DescendantRemoving:Connect(function(obj)
-    Engine.Cache.Keys[obj] = nil    Engine.Cache.Fires[obj] = nil
+    Engine.Cache.Keys[obj] = nil
+    Engine.Cache.Fires[obj] = nil
     Engine.Cache.Prompts[obj] = nil
 end)
 
@@ -292,6 +279,7 @@ local function createEspForItem(obj)
 	beam.Transparency = NumberSequence.new(Config.FullBright and 0.1 or 0.3)
 	beam.LightEmission = Config.FullBright and 0.6 or 0.35
 	beam.Parent = Workspace:FindFirstChildOfClass("Terrain") or Workspace
+
 	Engine.ESPBeams[obj] = beam
 	Engine.ESPAttachments[obj] = targetAttach
 
@@ -312,25 +300,29 @@ local function updateEspBeamsThrottled()
 
 	while Config.ESP do
         task.wait(ESP_UPDATE_INTERVAL)
-		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-		if not root then continue end
+        
+        pcall(function()
+            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if not root or not root.Parent then return end
 
-		local itemsToClean = {}
-		for obj, beam in pairs(Engine.ESPBeams) do
-			local targetAttachment = Engine.ESPAttachments[obj]
-			local adornee = targetAttachment and targetAttachment.Parent
-			local isValid = targetAttachment and adornee and adornee.Parent and adornee:IsA("BasePart")
-			if isValid then
-				if not isItemOnGround(adornee) or not isWithinRelativeBounds(adornee.Position, root.Position) then
-					isValid = false
-				elseif Config.ESPDistance and (adornee.Position - root.Position).Magnitude > MAX_ESP_DISTANCE then
-                    isValid = false 
+            local itemsToClean = {}
+            for obj, beam in pairs(Engine.ESPBeams) do
+                local targetAttachment = Engine.ESPAttachments[obj]
+                local adornee = targetAttachment and targetAttachment.Parent
+                local isValid = targetAttachment and adornee and adornee.Parent and adornee:IsA("BasePart")
+                if isValid then
+                    if not isItemOnGround(adornee) or not isWithinRelativeBounds(adornee.Position, root.Position) then
+                        isValid = false
+                    elseif Config.ESPDistance and (adornee.Position - root.Position).Magnitude > MAX_ESP_DISTANCE then
+                        isValid = false 
+                    end
                 end
-			end
-			if not isValid then table.insert(itemsToClean, obj) end
-		end
-		for _, objToClean in ipairs(itemsToClean) do cleanEspForItem(objToClean) end
-        for _, obj in ipairs(GetDictKeys(Engine.Cache.Keys)) do pcall(createEspForItem, obj) end
+                if not isValid then table.insert(itemsToClean, obj) end
+            end
+
+            for _, objToClean in ipairs(itemsToClean) do cleanEspForItem(objToClean) end
+            for _, obj in ipairs(GetDictKeys(Engine.Cache.Keys)) do pcall(createEspForItem, obj) end
+        end)
 	end
 	Engine.ESPUpdateRunning = false
 	cleanupAllEsp()
@@ -341,7 +333,8 @@ local function hideFire(obj)
     if obj:IsA("ProximityPrompt") or obj:IsA("ParticleEmitter") or obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") then
         if obj.Parent and obj.Parent:IsA("BasePart") and obj.Parent.Size.Magnitude <= 50 then
             target = obj.Parent
-        end    end
+        end
+    end
     if Engine.HiddenFires[target] then return end
     Engine.HiddenFires[target] = {Parent = target.Parent}
     target.Parent = nil
@@ -367,7 +360,8 @@ RunService.Stepped:Connect(function()
                 if hum.WalkSpeed ~= desiredSpeed then hum.WalkSpeed = desiredSpeed end
             else Engine.SpeedEnforceRunning = false end
         elseif Config.AntiFreeze and hum.WalkSpeed == 0 then
-            pcall(function() hum.WalkSpeed = desiredSpeed end) end
+            pcall(function() hum.WalkSpeed = desiredSpeed end)
+        end
     end
 end)
 
@@ -390,155 +384,16 @@ task.spawn(function()
                     end
                 end
             end
-        end    end
+        end
+    end
 end)
 
--- ================= 8. UI Generation & Factory Pattern =================
+-- ================= 8. Global Feature Variables & Registration =================
 local activeScreenGui = nil
 local activeTpButton = nil
 local isBuildingUI = false
 
-local function BuildUI()
-    local guiParent = (gethui and gethui()) or game:GetService("CoreGui") or playerGui
-    for _, child in ipairs(guiParent:GetChildren()) do
-        if string.match(child.Name, "^OWP_PetaHub") then pcall(function() child:Destroy() end) end
-    end
-
-    local screenGui = Instance.new("ScreenGui", guiParent)
-    screenGui.Name = GUI_NAME
-    screenGui.ResetOnSpawn = false
-
-    local toggleButton = Instance.new("TextButton", screenGui)
-    toggleButton.Size = UDim2.new(0, 80, 0, 30)
-    toggleButton.Position = UDim2.new(0, 10, 0, 10)
-    toggleButton.Text = "OWP HUB"
-    toggleButton.BackgroundColor3 = COLOR_TEXT_DARK
-    toggleButton.TextColor3 = COLOR_TEXT_LIGHT
-    toggleButton.Font = FONT_BOLD
-    toggleButton.TextScaled = true
-    toggleButton.Draggable = true
-
-    local tpButton = Instance.new("TextButton", screenGui)
-    tpButton.Size = UDim2.new(0, 120, 0, 30)
-    tpButton.Position = UDim2.new(0, 10, 0, 45) 
-    tpButton.BackgroundColor3 = COLOR_SECONDARY_BG
-    tpButton.TextColor3 = COLOR_ACCENT_GREEN
-    tpButton.Font = FONT_BOLD
-    tpButton.TextScaled = true
-    tpButton.Text = "Teleport To Key"
-    tpButton.Visible = Config.TeleportHUD
-    tpButton.Draggable = true
-
-    local mainFrame = Instance.new("Frame", screenGui)
-    mainFrame.Size = UDim2.new(0, 220, 0, 330)
-    mainFrame.Position = UDim2.new(0.5, -110, 0.1, 0)
-    mainFrame.BackgroundColor3 = COLOR_PRIMARY_BG
-    mainFrame.BorderColor3 = COLOR_BORDER
-    mainFrame.Visible = Config.GuiVisible
-    mainFrame.Draggable = true
-
-    local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
-    scrollFrame.Size = UDim2.new(1, 0, 1, -25)
-    scrollFrame.BackgroundTransparency = 1    scrollFrame.ScrollBarThickness = 4
-    scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-
-    local uiListLayout = Instance.new("UIListLayout", scrollFrame)
-    uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    uiListLayout.Padding = UDim.new(0, 8)
-    uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    Instance.new("UIPadding", scrollFrame).PaddingTop = UDim.new(0, 8)
-
-    local creditLabel = Instance.new("TextLabel", mainFrame)
-    creditLabel.Size = UDim2.new(1, 0, 0, 20)
-    creditLabel.Position = UDim2.new(0, 0, 1, -22)
-    creditLabel.BackgroundTransparency = 1
-    creditLabel.TextColor3 = COLOR_TEXT_LIGHT
-    creditLabel.Font = Enum.Font.SourceSans
-    creditLabel.TextScaled = true
-    creditLabel.Text = "BY: OTHERWISEPOP"
-
-    for order, feature in ipairs(FeatureList) do
-        local btn = Instance.new("TextButton", scrollFrame)
-        btn.Size = UDim2.new(1, -20, 0, 32)
-        btn.LayoutOrder = order
-        btn.TextColor3 = COLOR_TEXT_LIGHT
-        btn.BackgroundColor3 = COLOR_SECONDARY_BG
-        btn.Font = FONT_BOLD
-        btn.TextScaled = true
-
-        local function updateVisuals()
-            if not btn.Parent then return end 
-            if feature.Type == "Toggle" then
-                btn.Text = feature.Name .. ": " .. (Config[feature.Key] and "ON" or "OFF")
-            elseif feature.Type == "Cycle" then
-                btn.Text = feature.Name .. ": " .. tostring(feature.CycleOptions[Config[feature.Key]])
-            end
-        end
-        feature._updateVisuals = updateVisuals 
-
-        btn.MouseButton1Click:Connect(function()
-            if feature.Type == "Toggle" then
-                Config[feature.Key] = not Config[feature.Key]
-            elseif feature.Type == "Cycle" then
-                Config[feature.Key] = (Config[feature.Key] % #feature.CycleOptions) + 1
-            end
-            updateVisuals()
-            if feature.Action then feature.Action(Config[feature.Key]) end
-            SaveConfig()
-            
-            if feature.Key == "TeleportHUD" and activeTpButton then
-                activeTpButton.Visible = Config.TeleportHUD
-            end        end)
-        updateVisuals()
-    end
-
-    toggleButton.MouseButton1Click:Connect(function()
-        Config.GuiVisible = not Config.GuiVisible
-        mainFrame.Visible = Config.GuiVisible
-        SaveConfig()
-    end)
-
-    tpButton.MouseButton1Click:Connect(function()
-        if tick() < Engine.TPCooldownEnd or tick() < Engine.TPWarningEnd then return end
-        if isPlayerHoldingAnyKey() then
-            Engine.TPWarningText, Engine.TPWarningEnd = "❌ Clear Hands!", tick() + 1.5
-            return
-        end
-
-        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if not root then Engine.TPWarningText, Engine.TPWarningEnd = "❌ Not Ready", tick() + 1.5; return end
-
-        local closestKey, closestPos, minDistance = nil, nil, math.huge
-        for _, obj in ipairs(GetDictKeys(Engine.Cache.Keys)) do
-            if isItemOnGround(obj) then
-                local part = obj:IsA("BasePart") and obj or obj:FindFirstChildWhichIsA("BasePart")
-                if part then
-                    local pos = part.Position
-                    if isWithinRelativeBounds(pos, root.Position) then
-                        local dist = (pos - root.Position).Magnitude
-                        if dist < minDistance then
-                            minDistance = dist
-                            closestKey = obj
-                            closestPos = pos
-                        end
-                    end
-                end
-            end
-        end
-
-        if closestKey and closestPos then
-            pcall(function() root.CFrame = CFrame.new(closestPos + Vector3.new(0, TELEPORT_VERTICAL_OFFSET, 0)) * root.CFrame.Rotation end)
-            Engine.TPCooldownEnd = tick() + TELEPORT_COOLDOWN
-        else
-            Engine.TPWarningText, Engine.TPWarningEnd = "❌ No Keys Found", tick() + 1.5
-        end
-    end)
-
-    activeScreenGui = screenGui
-    activeTpButton = tpButton
-end
--- ================= 9. Feature Registration List =================
-FeatureList = {
+local FeatureList = {
     {Name = "Speed", Key = "SpeedIndex", Type = "Cycle", CycleOptions = WALK_SPEEDS, Action = function(val)
         Engine.SpeedEnforceCancelTime = tick() + ENFORCE_SPEED_DURATION
         Engine.SpeedEnforceRunning = true
@@ -586,7 +441,8 @@ FeatureList = {
                 end
             end)
         end
-    end},    
+    end},
+    
     {Name = "Full Bright", Key = "FullBright", Type = "Toggle", Action = function(val)
         if val then
             Engine.FullBrightConnection = RunService.RenderStepped:Connect(function()
@@ -637,6 +493,149 @@ FeatureList = {
     {Name = "Anti-Freeze", Key = "AntiFreeze", Type = "Toggle", Action = nil}
 }
 
+-- ================= 9. UI Generation (Decoupled Factory) =================
+local function BuildUI()
+    local guiParent = (gethui and gethui()) or game:GetService("CoreGui") or playerGui
+    for _, child in ipairs(guiParent:GetChildren()) do
+        if string.match(child.Name, "^OWP_PetaHub") then pcall(function() child:Destroy() end) end
+    end
+
+    local screenGui = Instance.new("ScreenGui", guiParent)
+    screenGui.Name = GUI_NAME
+    screenGui.ResetOnSpawn = false
+
+    local toggleButton = Instance.new("TextButton", screenGui)
+    toggleButton.Size = UDim2.new(0, 80, 0, 30)
+    toggleButton.Position = UDim2.new(0, 10, 0, 10)
+    toggleButton.Text = "OWP HUB"
+    toggleButton.BackgroundColor3 = COLOR_TEXT_DARK
+    toggleButton.TextColor3 = COLOR_TEXT_LIGHT
+    toggleButton.Font = FONT_BOLD
+    toggleButton.TextScaled = true
+    toggleButton.Draggable = true
+
+    local tpButton = Instance.new("TextButton", screenGui)
+    tpButton.Size = UDim2.new(0, 120, 0, 30)
+    tpButton.Position = UDim2.new(0, 10, 0, 45) 
+    tpButton.BackgroundColor3 = COLOR_SECONDARY_BG
+    tpButton.TextColor3 = COLOR_ACCENT_GREEN
+    tpButton.Font = FONT_BOLD
+    tpButton.TextScaled = true
+    tpButton.Text = "Teleport To Key"
+    tpButton.Visible = Config.TeleportHUD
+    tpButton.Draggable = true
+
+    local mainFrame = Instance.new("Frame", screenGui)
+    mainFrame.Size = UDim2.new(0, 220, 0, 330)
+    mainFrame.Position = UDim2.new(0.5, -110, 0.1, 0)
+    mainFrame.BackgroundColor3 = COLOR_PRIMARY_BG
+    mainFrame.BorderColor3 = COLOR_BORDER
+    mainFrame.Visible = Config.GuiVisible
+    mainFrame.Draggable = true
+
+    local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
+    scrollFrame.Size = UDim2.new(1, 0, 1, -25)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.ScrollBarThickness = 4
+    scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+    local uiListLayout = Instance.new("UIListLayout", scrollFrame)
+    uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    uiListLayout.Padding = UDim.new(0, 8)
+    uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    Instance.new("UIPadding", scrollFrame).PaddingTop = UDim.new(0, 8)
+
+    local creditLabel = Instance.new("TextLabel", mainFrame)
+    creditLabel.Size = UDim2.new(1, 0, 0, 20)
+    creditLabel.Position = UDim2.new(0, 0, 1, -22)
+    creditLabel.BackgroundTransparency = 1
+    creditLabel.TextColor3 = COLOR_TEXT_LIGHT
+    creditLabel.Font = Enum.Font.SourceSans
+    creditLabel.TextScaled = true
+    creditLabel.Text = "BY: OTHERWISEPOP"
+
+    for order, feature in ipairs(FeatureList) do
+        local btn = Instance.new("TextButton", scrollFrame)
+        btn.Size = UDim2.new(1, -20, 0, 32)
+        btn.LayoutOrder = order
+        btn.TextColor3 = COLOR_TEXT_LIGHT
+        btn.BackgroundColor3 = COLOR_SECONDARY_BG
+        btn.Font = FONT_BOLD
+        btn.TextScaled = true
+
+        local function updateVisuals()
+            if not btn.Parent then return end 
+            if feature.Type == "Toggle" then
+                btn.Text = feature.Name .. ": " .. (Config[feature.Key] and "ON" or "OFF")
+            elseif feature.Type == "Cycle" then
+                btn.Text = feature.Name .. ": " .. tostring(feature.CycleOptions[Config[feature.Key]])
+            end
+        end
+        feature._updateVisuals = updateVisuals 
+
+        btn.MouseButton1Click:Connect(function()
+            if feature.Type == "Toggle" then
+                Config[feature.Key] = not Config[feature.Key]
+            elseif feature.Type == "Cycle" then
+                Config[feature.Key] = (Config[feature.Key] % #feature.CycleOptions) + 1
+            end
+            updateVisuals()
+            if feature.Action then feature.Action(Config[feature.Key]) end
+            SaveConfig()
+            
+            if feature.Key == "TeleportHUD" and activeTpButton then
+                activeTpButton.Visible = Config.TeleportHUD
+            end
+        end)
+        updateVisuals()
+    end
+
+    toggleButton.MouseButton1Click:Connect(function()
+        Config.GuiVisible = not Config.GuiVisible
+        mainFrame.Visible = Config.GuiVisible
+        SaveConfig()
+    end)
+
+    tpButton.MouseButton1Click:Connect(function()
+        if tick() < Engine.TPCooldownEnd or tick() < Engine.TPWarningEnd then return end
+        if isPlayerHoldingAnyKey() then
+            Engine.TPWarningText, Engine.TPWarningEnd = "❌ Clear Hands!", tick() + 1.5
+            return
+        end
+
+        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if not root then Engine.TPWarningText, Engine.TPWarningEnd = "❌ Not Ready", tick() + 1.5; return end
+
+        local closestKey, closestPos, minDistance = nil, nil, math.huge
+        for _, obj in ipairs(GetDictKeys(Engine.Cache.Keys)) do
+            if isItemOnGround(obj) then
+                local part = obj:IsA("BasePart") and obj or obj:FindFirstChildWhichIsA("BasePart")
+                if part then
+                    local pos = part.Position
+                    if isWithinRelativeBounds(pos, root.Position) then
+                        local dist = (pos - root.Position).Magnitude
+                        if dist < minDistance then
+                            minDistance = dist
+                            closestKey = obj
+                            closestPos = pos
+                        end
+                    end
+                end
+            end
+        end
+
+        if closestKey and closestPos then
+            pcall(function() root.CFrame = CFrame.new(closestPos + Vector3.new(0, TELEPORT_VERTICAL_OFFSET, 0)) * root.CFrame.Rotation end)
+            Engine.TPCooldownEnd = tick() + TELEPORT_COOLDOWN
+        else
+            Engine.TPWarningText, Engine.TPWarningEnd = "❌ No Keys Found", tick() + 1.5
+        end
+    end)
+
+    activeScreenGui = screenGui
+    activeTpButton = tpButton
+end
+
 -- ================= 10. Initialization, Failsafes & Hooks =================
 
 -- Initial Load
@@ -652,22 +651,23 @@ for _, feature in ipairs(FeatureList) do
     end
 end
 
--- WATCHDOG & FAILSAFE
+-- Debounced Watchdog & Failsafe
 local uiMissingTime = 0
+local lastBuildTime = 0
+
 task.spawn(function()
     while task.wait(1) do
         if not activeScreenGui or not activeScreenGui.Parent then
             uiMissingTime = uiMissingTime + 1
             
-            if not isBuildingUI then
+            if not isBuildingUI and (tick() - lastBuildTime > 2) then
                 isBuildingUI = true
+                lastBuildTime = tick()
                 local s, e = pcall(BuildUI)
                 if not s then warn("[OWP HUB] Rebuild Error: " .. tostring(e)) end
                 isBuildingUI = false
             end
             
-            -- [REFINED FAILSAFE] Only suspends NoClip effects to prevent infinite falling. 
-            -- Config values remain untouched so saved preferences are not lost!
             if uiMissingTime >= 5 then
                 if Engine.NoClipConnection then 
                     warn("[OWP HUB] UI missing for 5+ seconds! Safety fallback: Temporarily suspending NoClip physics to prevent falling.")
@@ -681,26 +681,35 @@ task.spawn(function()
                             end
                         end
                     end
-                    uiMissingTime = -9999 -- Prevent spamming the fallback
+                    uiMissingTime = -9999
                 end
             end
-        else            uiMissingTime = 0
+        else
+            uiMissingTime = 0
         end
     end
 end)
 
--- TP HUD Background Updater
+-- Stabilized TP HUD Background Updater
 task.spawn(function()
     while task.wait(0.1) do
-        if not Config.TeleportHUD or not activeTpButton or not activeTpButton.Parent then continue end
+        if not Config.TeleportHUD or not activeTpButton or not activeTpButton.Parent or isBuildingUI then continue end
+        
+        local newState, newColor
+        
         if tick() < Engine.TPWarningEnd then
-            activeTpButton.Text, activeTpButton.TextColor3 = Engine.TPWarningText, COLOR_ACCENT_RED
+            newState, newColor = Engine.TPWarningText, COLOR_ACCENT_RED
         elseif isPlayerHoldingAnyKey() then
-            activeTpButton.Text, activeTpButton.TextColor3 = "TP: Item Held", COLOR_ACCENT_CYAN
+            newState, newColor = "TP: Item Held", COLOR_ACCENT_CYAN
         elseif tick() < Engine.TPCooldownEnd then
-            activeTpButton.Text, activeTpButton.TextColor3 = "TP Cooldown: " .. math.ceil(Engine.TPCooldownEnd - tick()) .. "s", COLOR_ACCENT_YELLOW
+            newState, newColor = "TP Cooldown: " .. math.ceil(Engine.TPCooldownEnd - tick()) .. "s", COLOR_ACCENT_YELLOW
         else
-            activeTpButton.Text, activeTpButton.TextColor3 = "Teleport To Key", COLOR_ACCENT_GREEN
+            newState, newColor = "Teleport To Key", COLOR_ACCENT_GREEN
+        end
+        
+        if activeTpButton.Text ~= newState then
+            activeTpButton.Text = newState
+            activeTpButton.TextColor3 = newColor
         end
     end
 end)
@@ -720,4 +729,4 @@ player.CharacterAdded:Connect(function(newCharacter)
     end
 end)
 
-print("✅ PETAPETA: School of Nightmares V14.3 (Phase 3.3: Resilience Update) - Loaded")
+print("✅ PETAPETA: School of Nightmares V14.5 (Phase 3.5: Architectural Purification) - Loaded")
