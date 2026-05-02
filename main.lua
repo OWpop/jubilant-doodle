@@ -8,7 +8,7 @@ if queue_on_teleport then
 end
 
 --[[
-    PETAPETA: School of Nightmares V14.5 (Phase 3.5: Architectural Purification)
+    PETAPETA: School of Nightmares V14.6.1 (Phase 4: Premium UI + FullBright Patch)
     By: OtherWisePop
     USE RESPONSIBLY AND AT YOUR OWN RISK.
 --]]
@@ -19,6 +19,7 @@ local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 if not player then
@@ -27,20 +28,61 @@ if not player then
 end
 local playerGui = player:WaitForChild("PlayerGui")
 
-local GUI_NAME = "OWP_PetaHub_V14_5_" .. tostring(math.random(10000, 99999))
+local GUI_NAME = "OWP_PetaHub_V14_6_" .. tostring(math.random(10000, 99999))
 local CONFIG_FILE_NAME = "OWP_PetaHub_Config.json"
-local FONT_BOLD = Enum.Font.SourceSansBold
 
--- Colors
-local COLOR_PRIMARY_BG = Color3.fromRGB(25, 25, 25)
-local COLOR_SECONDARY_BG = Color3.fromRGB(40, 40, 40)
-local COLOR_BORDER = Color3.fromRGB(50, 50, 50)
-local COLOR_TEXT_LIGHT = Color3.fromRGB(255, 255, 255)
-local COLOR_TEXT_DARK = Color3.fromRGB(0, 0, 0)
-local COLOR_ACCENT_GREEN = Color3.fromRGB(0, 255, 0)
-local COLOR_ACCENT_YELLOW = Color3.fromRGB(255, 255, 0)
-local COLOR_ACCENT_RED = Color3.fromRGB(255, 0, 0)
-local COLOR_ACCENT_CYAN = Color3.fromRGB(0, 200, 255)
+-- Premium Typography & Aesthetics
+local FONT_BOLD = Enum.Font.GothamBold
+local CORNER_RADIUS = UDim.new(0, 8)
+local STROKE_THICKNESS = 1.2
+
+-- Dynamic Theme Palettes
+local THEMES = {
+    { -- 1: Dark (Default)
+        Name = "Dark",
+        PrimaryBg = Color3.fromRGB(20, 20, 20),
+        SecondaryBg = Color3.fromRGB(35, 35, 35),
+        Border = Color3.fromRGB(60, 60, 60),
+        Text = Color3.fromRGB(255, 255, 255),
+        AccentCyan = Color3.fromRGB(0, 200, 255),
+        AccentGreen = Color3.fromRGB(46, 204, 113),
+        AccentYellow = Color3.fromRGB(241, 196, 15),
+        AccentRed = Color3.fromRGB(231, 76, 60),
+    },
+    { -- 2: Light
+        Name = "Light",
+        PrimaryBg = Color3.fromRGB(245, 245, 245),
+        SecondaryBg = Color3.fromRGB(225, 225, 225),
+        Border = Color3.fromRGB(180, 180, 180),
+        Text = Color3.fromRGB(30, 30, 30),
+        AccentCyan = Color3.fromRGB(0, 150, 200),
+        AccentGreen = Color3.fromRGB(39, 174, 96),
+        AccentYellow = Color3.fromRGB(212, 172, 13),
+        AccentRed = Color3.fromRGB(192, 57, 43),
+    },
+    { -- 3: Blood
+        Name = "Blood",
+        PrimaryBg = Color3.fromRGB(15, 5, 5),
+        SecondaryBg = Color3.fromRGB(30, 10, 10),
+        Border = Color3.fromRGB(80, 20, 20),
+        Text = Color3.fromRGB(255, 200, 200),
+        AccentCyan = Color3.fromRGB(100, 200, 255),
+        AccentGreen = Color3.fromRGB(46, 204, 113),
+        AccentYellow = Color3.fromRGB(241, 196, 15),
+        AccentRed = Color3.fromRGB(255, 50, 50),
+    },
+    { -- 4: Ocean
+        Name = "Ocean",
+        PrimaryBg = Color3.fromRGB(5, 10, 20),
+        SecondaryBg = Color3.fromRGB(15, 25, 40),
+        Border = Color3.fromRGB(30, 50, 80),
+        Text = Color3.fromRGB(200, 230, 255),
+        AccentCyan = Color3.fromRGB(0, 255, 255),
+        AccentGreen = Color3.fromRGB(46, 204, 113),
+        AccentYellow = Color3.fromRGB(241, 196, 15),
+        AccentRed = Color3.fromRGB(231, 76, 60),
+    }
+}
 
 -- Configuration Constants
 local WALK_SPEEDS = {16, 20, 30, 40, 50}
@@ -58,6 +100,7 @@ local ENFORCE_SPEED_DURATION = 8
 -- ================= 2. Centralized State =================
 local Config = {
     GuiVisible = false,
+    ThemeIndex = 1,
     SpeedIndex = 2,
     NoClip = false,
     FullBright = false,
@@ -72,33 +115,19 @@ local Config = {
 }
 
 local Engine = {
-    Cache = {
-        Keys = {},
-        Fires = {},
-        Prompts = {}
-    },
-    ESPBeams = {},
-    ESPAttachments = {},
-    ESPConnections = {},
+    Cache = { Keys = {}, Fires = {}, Prompts = {} },
+    ESPBeams = {}, ESPAttachments = {}, ESPConnections = {},
     ESPUpdateRunning = false,
-    NoClipConnection = nil,
-    FullBrightConnection = nil,
-    AntiVoidConnection = nil,
-    AntiFreezeConnection = nil,
-    SpeedEnforceRunning = false,
-    SpeedEnforceCancelTime = 0,
+    NoClipConnection = nil, FullBrightConnection = nil,
+    AntiVoidConnection = nil, AntiFreezeConnection = nil,
+    SpeedEnforceRunning = false, SpeedEnforceCancelTime = 0,
     HiddenFires = {}, 
-    TPCooldownEnd = 0,
-    TPWarningEnd = 0,
-    TPWarningText = ""
+    TPCooldownEnd = 0, TPWarningEnd = 0, TPWarningText = ""
 }
 
 local initialLighting = {
-	Ambient = Lighting.Ambient,
-	OutdoorAmbient = Lighting.OutdoorAmbient,
-	Brightness = Lighting.Brightness,
-	FogEnd = Lighting.FogEnd,
-	GlobalShadows = Lighting.GlobalShadows,
+	Ambient = Lighting.Ambient, OutdoorAmbient = Lighting.OutdoorAmbient,
+	Brightness = Lighting.Brightness, FogEnd = Lighting.FogEnd, GlobalShadows = Lighting.GlobalShadows,
 }
 
 -- ================= 3. State Persistence =================
@@ -112,20 +141,20 @@ local function LoadConfig()
                 for k, v in pairs(decoded) do
                     if Config[k] ~= nil and type(Config[k]) == type(v) then
                         if k == "SpeedIndex" and (v < 1 or v > #WALK_SPEEDS) then continue end
+                        if k == "ThemeIndex" and (v < 1 or v > #THEMES) then continue end
                         Config[k] = v
                     end
                 end
             end
         end
     end
+    -- Force GUI closed on startup for the open animation
+    Config.GuiVisible = false
 end
 
 local function SaveConfig()
     if not writefile then return end
-    pcall(function()
-        local json = HttpService:JSONEncode(Config)
-        writefile(CONFIG_FILE_NAME, json)
-    end)
+    pcall(function() writefile(CONFIG_FILE_NAME, HttpService:JSONEncode(Config)) end)
 end
 
 LoadConfig()
@@ -187,9 +216,7 @@ end
 local function CheckFireText(obj, text)
     if not text then return end
     text = text:lower()
-    if string.find(text, "fire") or string.find(text, "extinguish") or string.find(text, "flame") then
-        Engine.Cache.Fires[obj] = true
-    end
+    if string.find(text, "fire") or string.find(text, "extinguish") or string.find(text, "flame") then Engine.Cache.Fires[obj] = true end
 end
 
 local function CategorizeObject(obj)
@@ -199,8 +226,7 @@ local function CategorizeObject(obj)
     if cls == "ProximityPrompt" then
         local action, name, object = obj.ActionText:lower(), lowerName, obj.ObjectText:lower()
         if string.find(action, "search") or string.find(name, "search") then Engine.Cache.Prompts[obj] = true end
-        CheckFireText(obj, action)
-        CheckFireText(obj, object)
+        CheckFireText(obj, action); CheckFireText(obj, object)
 
         obj:GetPropertyChangedSignal("ActionText"):Connect(function()
             local a = obj.ActionText:lower()
@@ -229,9 +255,7 @@ for _, obj in ipairs(Workspace:GetDescendants()) do CategorizeObject(obj) end
 Workspace.DescendantAdded:Connect(CategorizeObject)
 
 Workspace.DescendantRemoving:Connect(function(obj)
-    Engine.Cache.Keys[obj] = nil
-    Engine.Cache.Fires[obj] = nil
-    Engine.Cache.Prompts[obj] = nil
+    Engine.Cache.Keys[obj] = nil; Engine.Cache.Fires[obj] = nil; Engine.Cache.Prompts[obj] = nil
 end)
 
 -- ================= 6. Core Logic Functions =================
@@ -254,10 +278,8 @@ end
 
 local function createEspForItem(obj)
 	if not obj or Engine.ESPBeams[obj] or not obj.Parent then return end
-
 	local adornee = obj:FindFirstChild("Handle") or obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
 	if not adornee or not adornee:IsA("BasePart") or not adornee.Parent then return end
-
 	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	if not root or not isItemOnGround(adornee) or not isWithinRelativeBounds(adornee.Position, root.Position) then return end
 	if Config.ESPDistance and (adornee.Position - root.Position).Magnitude > MAX_ESP_DISTANCE then return end
@@ -270,18 +292,15 @@ local function createEspForItem(obj)
 
 	local targetAttach = Instance.new("Attachment", adornee)
 	local beam = Instance.new("Beam")
-	beam.Attachment0 = originAttach
-	beam.Attachment1 = targetAttach
-	beam.Width0 = 0.1
-	beam.Width1 = 0.1
-	beam.FaceCamera = true
-	beam.Color = ColorSequence.new(Config.FullBright and COLOR_ACCENT_CYAN or COLOR_ACCENT_GREEN)
+	beam.Attachment0 = originAttach; beam.Attachment1 = targetAttach; beam.Width0 = 0.1; beam.Width1 = 0.1; beam.FaceCamera = true
+    
+    local t = THEMES[Config.ThemeIndex] or THEMES[1]
+	beam.Color = ColorSequence.new(Config.FullBright and t.AccentCyan or t.AccentGreen)
 	beam.Transparency = NumberSequence.new(Config.FullBright and 0.1 or 0.3)
 	beam.LightEmission = Config.FullBright and 0.6 or 0.35
 	beam.Parent = Workspace:FindFirstChildOfClass("Terrain") or Workspace
 
-	Engine.ESPBeams[obj] = beam
-	Engine.ESPAttachments[obj] = targetAttach
+	Engine.ESPBeams[obj] = beam; Engine.ESPAttachments[obj] = targetAttach
 
 	local connections = {}
 	table.insert(connections, obj.Destroying:Connect(function() cleanEspForItem(obj) end))
@@ -300,7 +319,6 @@ local function updateEspBeamsThrottled()
 
 	while Config.ESP do
         task.wait(ESP_UPDATE_INTERVAL)
-        
         pcall(function()
             local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
             if not root or not root.Parent then return end
@@ -311,11 +329,8 @@ local function updateEspBeamsThrottled()
                 local adornee = targetAttachment and targetAttachment.Parent
                 local isValid = targetAttachment and adornee and adornee.Parent and adornee:IsA("BasePart")
                 if isValid then
-                    if not isItemOnGround(adornee) or not isWithinRelativeBounds(adornee.Position, root.Position) then
-                        isValid = false
-                    elseif Config.ESPDistance and (adornee.Position - root.Position).Magnitude > MAX_ESP_DISTANCE then
-                        isValid = false 
-                    end
+                    if not isItemOnGround(adornee) or not isWithinRelativeBounds(adornee.Position, root.Position) then isValid = false
+                    elseif Config.ESPDistance and (adornee.Position - root.Position).Magnitude > MAX_ESP_DISTANCE then isValid = false end
                 end
                 if not isValid then table.insert(itemsToClean, obj) end
             end
@@ -331,9 +346,7 @@ end
 local function hideFire(obj)
     local target = obj
     if obj:IsA("ProximityPrompt") or obj:IsA("ParticleEmitter") or obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") then
-        if obj.Parent and obj.Parent:IsA("BasePart") and obj.Parent.Size.Magnitude <= 50 then
-            target = obj.Parent
-        end
+        if obj.Parent and obj.Parent:IsA("BasePart") and obj.Parent.Size.Magnitude <= 50 then target = obj.Parent end
     end
     if Engine.HiddenFires[target] then return end
     Engine.HiddenFires[target] = {Parent = target.Parent}
@@ -388,112 +401,11 @@ task.spawn(function()
     end
 end)
 
--- ================= 8. Global Feature Variables & Registration =================
+-- ================= 8. Premium UI Generation & Theme Registry =================
 local activeScreenGui = nil
 local activeTpButton = nil
 local isBuildingUI = false
 
-local FeatureList = {
-    {Name = "Speed", Key = "SpeedIndex", Type = "Cycle", CycleOptions = WALK_SPEEDS, Action = function(val)
-        Engine.SpeedEnforceCancelTime = tick() + ENFORCE_SPEED_DURATION
-        Engine.SpeedEnforceRunning = true
-    end, OnCharacterAdded = function(char, hum)
-        if hum then hum.WalkSpeed = WALK_SPEEDS[Config.SpeedIndex] end
-        Engine.SpeedEnforceCancelTime = tick() + ENFORCE_SPEED_DURATION
-        Engine.SpeedEnforceRunning = true
-    end},
-    
-    {Name = "NoClip", Key = "NoClip", Type = "Toggle", Action = function(val)
-        if val then
-            if not Engine.NoClipConnection then
-                Engine.NoClipConnection = RunService.Stepped:Connect(function()
-                    if player.Character then
-                        for _, p in ipairs(player.Character:GetDescendants()) do
-                            if p:IsA("BasePart") then pcall(function() p.CanCollide = false end) end
-                        end
-                    end
-                end)
-            end
-        else
-            if Engine.NoClipConnection then Engine.NoClipConnection:Disconnect(); Engine.NoClipConnection = nil end
-            if player.Character then
-                for _, p in ipairs(player.Character:GetDescendants()) do
-                    if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then pcall(function() p.CanCollide = true end) end
-                end
-            end
-        end
-    end, OnCharacterAdded = function(char, hum)
-        if Engine.NoClipConnection then 
-            Engine.NoClipConnection:Disconnect() 
-            Engine.NoClipConnection = nil 
-        end
-        if Config.NoClip then
-            task.spawn(function()
-                task.wait(0.5) 
-                if Config.NoClip and not Engine.NoClipConnection then
-                    Engine.NoClipConnection = RunService.Stepped:Connect(function()
-                        if player.Character then
-                            for _, p in ipairs(player.Character:GetDescendants()) do
-                                if p:IsA("BasePart") then pcall(function() p.CanCollide = false end) end
-                            end
-                        end
-                    end)
-                end
-            end)
-        end
-    end},
-    
-    {Name = "Full Bright", Key = "FullBright", Type = "Toggle", Action = function(val)
-        if val then
-            Engine.FullBrightConnection = RunService.RenderStepped:Connect(function()
-                Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-                Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-                Lighting.Brightness = 2.5
-                Lighting.FogEnd = 1000000
-                Lighting.GlobalShadows = false
-            end)
-        else
-            if Engine.FullBrightConnection then Engine.FullBrightConnection:Disconnect(); Engine.FullBrightConnection = nil end
-            Lighting.Ambient, Lighting.OutdoorAmbient, Lighting.Brightness, Lighting.FogEnd, Lighting.GlobalShadows = 
-                initialLighting.Ambient, initialLighting.OutdoorAmbient, initialLighting.Brightness, initialLighting.FogEnd, initialLighting.GlobalShadows
-        end
-    end},
-    
-    {Name = "ESP", Key = "ESP", Type = "Toggle", Action = function(val)
-        if val then if not Engine.ESPUpdateRunning then task.spawn(updateEspBeamsThrottled) end else cleanupAllEsp() end
-    end},
-    
-    {Name = "ESP Distance", Key = "ESPDistance", Type = "Toggle", Action = function(val)
-        if Config.ESP and not Engine.ESPUpdateRunning then task.spawn(updateEspBeamsThrottled) end
-    end},
-    
-    {Name = "Anti-Void", Key = "AntiVoid", Type = "Toggle", Action = function(val)
-        if Engine.AntiVoidConnection then Engine.AntiVoidConnection:Disconnect(); Engine.AntiVoidConnection = nil end
-        if val then
-            Engine.AntiVoidConnection = RunService.Heartbeat:Connect(function()
-                local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                if root and root.Position.Y < VOID_THRESHOLD then
-                    pcall(function() root.CFrame = CFrame.new(root.Position + Vector3.new(0, VOID_TELEPORT_HEIGHT - root.Position.Y, 0)) end)
-                end
-            end)
-        end
-    end},
-    
-    {Name = "Teleport HUD", Key = "TeleportHUD", Type = "Toggle", Action = function(val) if activeTpButton then activeTpButton.Visible = val end end},
-    {Name = "Speed Lock", Key = "SpeedLock", Type = "Toggle", Action = nil},
-    {Name = "Bypass Fire", Key = "BypassFire", Type = "Toggle", Action = function(val)
-        if not val then
-            for obj, data in pairs(Engine.HiddenFires) do
-                if obj then pcall(function() obj.Parent = data.Parent end) end
-            end
-            table.clear(Engine.HiddenFires)
-        end
-    end},
-    {Name = "Search Aura", Key = "SearchAura", Type = "Toggle", Action = nil},
-    {Name = "Anti-Freeze", Key = "AntiFreeze", Type = "Toggle", Action = nil}
-}
-
--- ================= 9. UI Generation (Decoupled Factory) =================
 local function BuildUI()
     local guiParent = (gethui and gethui()) or game:GetService("CoreGui") or playerGui
     for _, child in ipairs(guiParent:GetChildren()) do
@@ -504,64 +416,131 @@ local function BuildUI()
     screenGui.Name = GUI_NAME
     screenGui.ResetOnSpawn = false
 
+    -- Loading Screen Logic
+    if not _G.OWP_HasLoaded then
+        local loadFrame = Instance.new("Frame", screenGui)
+        loadFrame.Size = UDim2.new(1, 0, 1, 0)
+        loadFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+        loadFrame.BackgroundTransparency = 0.3
+        loadFrame.ZIndex = 9999
+        
+        local loadText = Instance.new("TextLabel", loadFrame)
+        loadText.Size = UDim2.new(1, 0, 1, 0)
+        loadText.BackgroundTransparency = 1
+        loadText.Font = FONT_BOLD
+        loadText.Text = "PETAPETA HUB"
+        loadText.TextColor3 = Color3.new(1, 1, 1)
+        loadText.TextSize = 24
+        
+        task.spawn(function()
+            local ti = TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+            TweenService:Create(loadText, ti, {TextTransparency = 0.5}):Play()
+            
+            task.wait(1.5)
+            local fadeInfo = TweenInfo.new(0.5)
+            TweenService:Create(loadFrame, fadeInfo, {BackgroundTransparency = 1}):Play()
+            local fadeText = TweenService:Create(loadText, fadeInfo, {TextTransparency = 1})
+            fadeText:Play()
+            fadeText.Completed:Wait()
+            loadFrame:Destroy()
+            _G.OWP_HasLoaded = true
+        end)
+    end
+
+    -- Theme Registry 
+    local ThemeRegistry = {}
+    local function RegisterTheme(element, property, themeKey)
+        table.insert(ThemeRegistry, {Element = element, Property = property, ThemeKey = themeKey})
+    end
+
+    local function ApplyTheme(index)
+        local t = THEMES[index] or THEMES[1]
+        for _, entry in ipairs(ThemeRegistry) do
+            if entry.Element and entry.Element.Parent then
+                pcall(function()
+                    TweenService:Create(entry.Element, TweenInfo.new(0.3), {[entry.Property] = t[entry.ThemeKey]}):Play()
+                end)
+            end
+        end
+        for _, beam in pairs(Engine.ESPBeams) do
+            if beam and beam.Parent then
+                beam.Color = ColorSequence.new(Config.FullBright and t.AccentCyan or t.AccentGreen)
+            end
+        end
+    end
+
+    local function RoundAndStroke(element, isMainFrame)
+        local corner = Instance.new("UICorner", element)
+        corner.CornerRadius = CORNER_RADIUS
+        
+        local stroke = Instance.new("UIStroke", element)
+        stroke.Thickness = STROKE_THICKNESS
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        RegisterTheme(stroke, "Color", "Border")
+    end
+
     local toggleButton = Instance.new("TextButton", screenGui)
-    toggleButton.Size = UDim2.new(0, 80, 0, 30)
+    toggleButton.Size = UDim2.new(0, 90, 0, 34)
     toggleButton.Position = UDim2.new(0, 10, 0, 10)
     toggleButton.Text = "OWP HUB"
-    toggleButton.BackgroundColor3 = COLOR_TEXT_DARK
-    toggleButton.TextColor3 = COLOR_TEXT_LIGHT
     toggleButton.Font = FONT_BOLD
-    toggleButton.TextScaled = true
+    toggleButton.TextSize = 14
     toggleButton.Draggable = true
+    RoundAndStroke(toggleButton)
+    RegisterTheme(toggleButton, "BackgroundColor3", "PrimaryBg")
+    RegisterTheme(toggleButton, "TextColor3", "Text")
 
     local tpButton = Instance.new("TextButton", screenGui)
-    tpButton.Size = UDim2.new(0, 120, 0, 30)
-    tpButton.Position = UDim2.new(0, 10, 0, 45) 
-    tpButton.BackgroundColor3 = COLOR_SECONDARY_BG
-    tpButton.TextColor3 = COLOR_ACCENT_GREEN
+    tpButton.Size = UDim2.new(0, 120, 0, 34)
+    tpButton.Position = UDim2.new(0, 10, 0, 52) 
     tpButton.Font = FONT_BOLD
-    tpButton.TextScaled = true
+    tpButton.TextSize = 14
     tpButton.Text = "Teleport To Key"
     tpButton.Visible = Config.TeleportHUD
     tpButton.Draggable = true
+    RoundAndStroke(tpButton)
+    RegisterTheme(tpButton, "BackgroundColor3", "SecondaryBg")
 
-    local mainFrame = Instance.new("Frame", screenGui)
-    mainFrame.Size = UDim2.new(0, 220, 0, 330)
-    mainFrame.Position = UDim2.new(0.5, -110, 0.1, 0)
-    mainFrame.BackgroundColor3 = COLOR_PRIMARY_BG
-    mainFrame.BorderColor3 = COLOR_BORDER
+    local mainFrame = Instance.new("CanvasGroup", screenGui)
+    mainFrame.Size = UDim2.new(0, 240, 0, 350)
+    mainFrame.Position = UDim2.new(0.5, -120, 0.1, 0)
+    mainFrame.GroupTransparency = Config.GuiVisible and 0 or 1
     mainFrame.Visible = Config.GuiVisible
     mainFrame.Draggable = true
+    RoundAndStroke(mainFrame, true)
+    RegisterTheme(mainFrame, "BackgroundColor3", "PrimaryBg")
 
     local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
     scrollFrame.Size = UDim2.new(1, 0, 1, -25)
     scrollFrame.BackgroundTransparency = 1
-    scrollFrame.ScrollBarThickness = 4
+    scrollFrame.ScrollBarThickness = 3
     scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 
     local uiListLayout = Instance.new("UIListLayout", scrollFrame)
     uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
     uiListLayout.Padding = UDim.new(0, 8)
     uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    Instance.new("UIPadding", scrollFrame).PaddingTop = UDim.new(0, 8)
+    Instance.new("UIPadding", scrollFrame).PaddingTop = UDim.new(0, 10)
 
     local creditLabel = Instance.new("TextLabel", mainFrame)
     creditLabel.Size = UDim2.new(1, 0, 0, 20)
     creditLabel.Position = UDim2.new(0, 0, 1, -22)
     creditLabel.BackgroundTransparency = 1
-    creditLabel.TextColor3 = COLOR_TEXT_LIGHT
-    creditLabel.Font = Enum.Font.SourceSans
-    creditLabel.TextScaled = true
+    creditLabel.Font = FONT_BOLD
+    creditLabel.TextSize = 11
     creditLabel.Text = "BY: OTHERWISEPOP"
+    RegisterTheme(creditLabel, "TextColor3", "Text")
 
-    for order, feature in ipairs(FeatureList) do
+    local function CreateButton(feature, order)
         local btn = Instance.new("TextButton", scrollFrame)
-        btn.Size = UDim2.new(1, -20, 0, 32)
+        btn.Size = UDim2.new(1, -24, 0, 34)
         btn.LayoutOrder = order
-        btn.TextColor3 = COLOR_TEXT_LIGHT
-        btn.BackgroundColor3 = COLOR_SECONDARY_BG
         btn.Font = FONT_BOLD
-        btn.TextScaled = true
+        btn.TextSize = 13
+        btn.AutoButtonColor = false 
+        RoundAndStroke(btn)
+        RegisterTheme(btn, "BackgroundColor3", "SecondaryBg")
+        RegisterTheme(btn, "TextColor3", "Text")
 
         local function updateVisuals()
             if not btn.Parent then return end 
@@ -569,15 +548,22 @@ local function BuildUI()
                 btn.Text = feature.Name .. ": " .. (Config[feature.Key] and "ON" or "OFF")
             elseif feature.Type == "Cycle" then
                 btn.Text = feature.Name .. ": " .. tostring(feature.CycleOptions[Config[feature.Key]])
+            elseif feature.Type == "ThemeCycle" then
+                btn.Text = feature.Name .. ": " .. THEMES[Config[feature.Key]].Name
             end
         end
         feature._updateVisuals = updateVisuals 
 
+        btn.MouseEnter:Connect(function() TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.2}):Play() end)
+        btn.MouseLeave:Connect(function() TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play() end)
+        btn.MouseButton1Down:Connect(function() TweenService:Create(btn, TweenInfo.new(0.1), {Size = UDim2.new(1, -30, 0, 32)}):Play() end)
+        btn.MouseButton1Up:Connect(function() TweenService:Create(btn, TweenInfo.new(0.1), {Size = UDim2.new(1, -24, 0, 34)}):Play() end)
+
         btn.MouseButton1Click:Connect(function()
             if feature.Type == "Toggle" then
                 Config[feature.Key] = not Config[feature.Key]
-            elseif feature.Type == "Cycle" then
-                Config[feature.Key] = (Config[feature.Key] % #feature.CycleOptions) + 1
+            elseif feature.Type == "Cycle" or feature.Type == "ThemeCycle" then
+                Config[feature.Key] = (Config[feature.Key] % #(feature.Type == "ThemeCycle" and THEMES or feature.CycleOptions)) + 1
             end
             updateVisuals()
             if feature.Action then feature.Action(Config[feature.Key]) end
@@ -590,10 +576,130 @@ local function BuildUI()
         updateVisuals()
     end
 
+    -- Feature Registration Passed into UI
+    local FeatureList = {
+        {Name = "Theme", Key = "ThemeIndex", Type = "ThemeCycle", Action = function(val) ApplyTheme(val) end},
+        {Name = "Speed", Key = "SpeedIndex", Type = "Cycle", CycleOptions = WALK_SPEEDS, Action = function(val)
+            Engine.SpeedEnforceCancelTime = tick() + ENFORCE_SPEED_DURATION
+            Engine.SpeedEnforceRunning = true
+        end, OnCharacterAdded = function(char, hum)
+            if hum then hum.WalkSpeed = WALK_SPEEDS[Config.SpeedIndex] end
+            Engine.SpeedEnforceCancelTime = tick() + ENFORCE_SPEED_DURATION
+            Engine.SpeedEnforceRunning = true
+        end},
+        {Name = "NoClip", Key = "NoClip", Type = "Toggle", Action = function(val)
+            if val then
+                if not Engine.NoClipConnection then
+                    Engine.NoClipConnection = RunService.Stepped:Connect(function()
+                        if player.Character then
+                            for _, p in ipairs(player.Character:GetDescendants()) do
+                                if p:IsA("BasePart") then pcall(function() p.CanCollide = false end) end
+                            end
+                        end
+                    end)
+                end
+            else
+                if Engine.NoClipConnection then Engine.NoClipConnection:Disconnect(); Engine.NoClipConnection = nil end
+                if player.Character then
+                    for _, p in ipairs(player.Character:GetDescendants()) do
+                        if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then pcall(function() p.CanCollide = true end) end
+                    end
+                end
+            end
+        end, OnCharacterAdded = function(char, hum)
+            if Engine.NoClipConnection then Engine.NoClipConnection:Disconnect(); Engine.NoClipConnection = nil end
+            if Config.NoClip then
+                task.spawn(function()
+                    task.wait(0.5) 
+                    if Config.NoClip and not Engine.NoClipConnection then
+                        Engine.NoClipConnection = RunService.Stepped:Connect(function()
+                            if player.Character then
+                                for _, p in ipairs(player.Character:GetDescendants()) do
+                                    if p:IsA("BasePart") then pcall(function() p.CanCollide = false end) end
+                                end
+                            end
+                        end)
+                    end
+                end)
+            end
+        end},
+        {Name = "Full Bright", Key = "FullBright", Type = "Toggle", Action = function(val)
+            if val then
+                Engine.FullBrightConnection = RunService.RenderStepped:Connect(function()
+                    Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+                    Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+                    Lighting.Brightness = 2.5
+                    Lighting.FogEnd = 1000000
+                    Lighting.GlobalShadows = false
+                end)
+            else
+                if Engine.FullBrightConnection then Engine.FullBrightConnection:Disconnect(); Engine.FullBrightConnection = nil end
+                Lighting.Ambient, Lighting.OutdoorAmbient, Lighting.Brightness, Lighting.FogEnd, Lighting.GlobalShadows = 
+                    initialLighting.Ambient, initialLighting.OutdoorAmbient, initialLighting.Brightness, initialLighting.FogEnd, initialLighting.GlobalShadows
+            end
+        end},
+        {Name = "ESP", Key = "ESP", Type = "Toggle", Action = function(val)
+            if val then if not Engine.ESPUpdateRunning then task.spawn(updateEspBeamsThrottled) end else cleanupAllEsp() end
+        end},
+        {Name = "ESP Distance", Key = "ESPDistance", Type = "Toggle", Action = function(val)
+            if Config.ESP and not Engine.ESPUpdateRunning then task.spawn(updateEspBeamsThrottled) end
+        end},
+        {Name = "Anti-Void", Key = "AntiVoid", Type = "Toggle", Action = function(val)
+            if Engine.AntiVoidConnection then Engine.AntiVoidConnection:Disconnect(); Engine.AntiVoidConnection = nil end
+            if val then
+                Engine.AntiVoidConnection = RunService.Heartbeat:Connect(function()
+                    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                    if root and root.Position.Y < VOID_THRESHOLD then
+                        pcall(function() root.CFrame = CFrame.new(root.Position + Vector3.new(0, VOID_TELEPORT_HEIGHT - root.Position.Y, 0)) end)
+                    end
+                end)
+            end
+        end},
+        {Name = "Teleport HUD", Key = "TeleportHUD", Type = "Toggle", Action = function(val) if activeTpButton then activeTpButton.Visible = val end end},
+        {Name = "Speed Lock", Key = "SpeedLock", Type = "Toggle", Action = nil},
+        {Name = "Bypass Fire", Key = "BypassFire", Type = "Toggle", Action = function(val)
+            if not val then
+                for obj, data in pairs(Engine.HiddenFires) do
+                    if obj then pcall(function() obj.Parent = data.Parent end) end
+                end
+                table.clear(Engine.HiddenFires)
+            end
+        end},
+        {Name = "Search Aura", Key = "SearchAura", Type = "Toggle", Action = nil},
+        {Name = "Anti-Freeze", Key = "AntiFreeze", Type = "Toggle", Action = nil}
+    }
+    _G.OWP_FeatureList = FeatureList
+
+    for order, feature in ipairs(FeatureList) do CreateButton(feature, order) end
+
+    -- Animated Menu Toggle
+    local isAnimating = false
     toggleButton.MouseButton1Click:Connect(function()
+        if isAnimating then return end
+        isAnimating = true
         Config.GuiVisible = not Config.GuiVisible
-        mainFrame.Visible = Config.GuiVisible
         SaveConfig()
+
+        if Config.GuiVisible then
+            mainFrame.Visible = true
+            mainFrame.GroupTransparency = 1
+            mainFrame.Size = UDim2.new(0, 220, 0, 310) 
+            local tween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                GroupTransparency = 0,
+                Size = UDim2.new(0, 240, 0, 350)
+            })
+            tween:Play()
+            tween.Completed:Wait()
+        else
+            local tween = TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                GroupTransparency = 1,
+                Size = UDim2.new(0, 220, 0, 310)
+            })
+            tween:Play()
+            tween.Completed:Wait()
+            mainFrame.Visible = false
+        end
+        isAnimating = false
     end)
 
     tpButton.MouseButton1Click:Connect(function()
@@ -614,11 +720,7 @@ local function BuildUI()
                     local pos = part.Position
                     if isWithinRelativeBounds(pos, root.Position) then
                         local dist = (pos - root.Position).Magnitude
-                        if dist < minDistance then
-                            minDistance = dist
-                            closestKey = obj
-                            closestPos = pos
-                        end
+                        if dist < minDistance then minDistance, closestKey, closestPos = dist, obj, pos end
                     end
                 end
             end
@@ -634,24 +736,17 @@ local function BuildUI()
 
     activeScreenGui = screenGui
     activeTpButton = tpButton
+    ApplyTheme(Config.ThemeIndex)
 end
 
--- ================= 10. Initialization, Failsafes & Hooks =================
+-- ================= 9. Initialization, Failsafes & Hooks =================
 
--- Initial Load
 if not isBuildingUI then
     isBuildingUI = true
     pcall(BuildUI)
     isBuildingUI = false
 end
 
-for _, feature in ipairs(FeatureList) do
-    if feature.Action and (Config[feature.Key] == true or feature.Type == "Cycle") then
-        feature.Action(Config[feature.Key])
-    end
-end
-
--- Debounced Watchdog & Failsafe
 local uiMissingTime = 0
 local lastBuildTime = 0
 
@@ -659,7 +754,6 @@ task.spawn(function()
     while task.wait(1) do
         if not activeScreenGui or not activeScreenGui.Parent then
             uiMissingTime = uiMissingTime + 1
-            
             if not isBuildingUI and (tick() - lastBuildTime > 2) then
                 isBuildingUI = true
                 lastBuildTime = tick()
@@ -667,44 +761,37 @@ task.spawn(function()
                 if not s then warn("[OWP HUB] Rebuild Error: " .. tostring(e)) end
                 isBuildingUI = false
             end
-            
             if uiMissingTime >= 5 then
                 if Engine.NoClipConnection then 
-                    warn("[OWP HUB] UI missing for 5+ seconds! Safety fallback: Temporarily suspending NoClip physics to prevent falling.")
+                    warn("[OWP HUB] Safety fallback: Suspending NoClip physics.")
                     Engine.NoClipConnection:Disconnect()
                     Engine.NoClipConnection = nil 
-                    
                     if player.Character then
                         for _, p in ipairs(player.Character:GetDescendants()) do
-                            if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then 
-                                pcall(function() p.CanCollide = true end) 
-                            end
+                            if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then pcall(function() p.CanCollide = true end) end
                         end
                     end
                     uiMissingTime = -9999
                 end
             end
-        else
-            uiMissingTime = 0
-        end
+        else uiMissingTime = 0 end
     end
 end)
 
--- Stabilized TP HUD Background Updater
 task.spawn(function()
     while task.wait(0.1) do
         if not Config.TeleportHUD or not activeTpButton or not activeTpButton.Parent or isBuildingUI then continue end
-        
+        local t = THEMES[Config.ThemeIndex] or THEMES[1]
         local newState, newColor
         
         if tick() < Engine.TPWarningEnd then
-            newState, newColor = Engine.TPWarningText, COLOR_ACCENT_RED
+            newState, newColor = Engine.TPWarningText, t.AccentRed
         elseif isPlayerHoldingAnyKey() then
-            newState, newColor = "TP: Item Held", COLOR_ACCENT_CYAN
+            newState, newColor = "TP: Item Held", t.AccentCyan
         elseif tick() < Engine.TPCooldownEnd then
-            newState, newColor = "TP Cooldown: " .. math.ceil(Engine.TPCooldownEnd - tick()) .. "s", COLOR_ACCENT_YELLOW
+            newState, newColor = "TP Cooldown: " .. math.ceil(Engine.TPCooldownEnd - tick()) .. "s", t.AccentYellow
         else
-            newState, newColor = "Teleport To Key", COLOR_ACCENT_GREEN
+            newState, newColor = "Teleport To Key", t.AccentGreen
         end
         
         if activeTpButton.Text ~= newState then
@@ -714,19 +801,26 @@ task.spawn(function()
     end
 end)
 
-player.CharacterAdded:Connect(function(newCharacter)
-    cleanupAllEsp()
-    if Config.ESP and not Engine.ESPUpdateRunning then task.spawn(updateEspBeamsThrottled) end
-    Engine.TPCooldownEnd, Engine.TPWarningEnd = 0, 0
-    
-    local hum = newCharacter:WaitForChild("Humanoid", 5)
-    
-    for _, feature in ipairs(FeatureList) do
-        if feature.OnCharacterAdded then
-            feature.OnCharacterAdded(newCharacter, hum)
-            if feature._updateVisuals then feature._updateVisuals() end
-        end
+for _, feature in ipairs(_G.OWP_FeatureList) do
+    if feature.Action and feature.Type ~= "ThemeCycle" and feature.Key ~= "TeleportHUD" and (Config[feature.Key] == true or feature.Type == "Cycle") then
+        feature.Action(Config[feature.Key])
     end
-end)
+end
 
-print("✅ PETAPETA: School of Nightmares V14.5 (Phase 3.5: Architectural Purification) - Loaded")
+if not _G.OWP_CharAdded_Hooked then
+    _G.OWP_CharAdded_Hooked = true
+    player.CharacterAdded:Connect(function(newCharacter)
+        cleanupAllEsp()
+        if Config.ESP and not Engine.ESPUpdateRunning then task.spawn(updateEspBeamsThrottled) end
+        Engine.TPCooldownEnd, Engine.TPWarningEnd = 0, 0
+        local hum = newCharacter:WaitForChild("Humanoid", 5)
+        for _, feature in ipairs(_G.OWP_FeatureList) do
+            if feature.OnCharacterAdded then
+                feature.OnCharacterAdded(newCharacter, hum)
+                if feature._updateVisuals then feature._updateVisuals() end
+            end
+        end
+    end)
+end
+
+print("✅ PETAPETA: School of Nightmares V14.6.1 (Phase 4: Premium UI + FullBright Patch) - Loaded")
