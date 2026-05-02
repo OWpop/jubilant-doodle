@@ -14,7 +14,7 @@ local isUnloaded = false
 local scriptConnections = {}
 
 --[[
-    PETAPETA: School of Nightmares V15.3 (Phase 4: Missing Helpers Restored)
+    PETAPETA: School of Nightmares V15.4 (Phase 4: Visual Polish & Layout Fixes)
     By: OtherWisePop
     USE RESPONSIBLY AND AT YOUR OWN RISK.
 --]]
@@ -34,7 +34,7 @@ if not player then
 end
 local playerGui = player:WaitForChild("PlayerGui")
 
-local GUI_NAME = "OWP_PetaHub_V15_3_" .. tostring(math.random(10000, 99999))
+local GUI_NAME = "OWP_PetaHub_V15_4_" .. tostring(math.random(10000, 99999))
 local CONFIG_FILE_NAME = "OWP_PetaHub_Config.json"
 
 local FONT = Enum.Font.SourceSans
@@ -61,15 +61,15 @@ local C_TOGGLE_OFF_BG = Color3.fromRGB(40, 40, 40)
 local C_TOGGLE_OFF_PILL = Color3.fromRGB(80, 80, 80)
 
 -- Sizes and Positions 
-local TOGGLE_BUTTON_SIZE = UDim2.new(0, 80, 0, 30)
+local TOGGLE_BUTTON_SIZE = UDim2.new(0, 90, 0, 32)
 local TOGGLE_BUTTON_POS = UDim2.new(0, 10, 0, 10) 
 
 local MENU_WIDTH = 320
 local MENU_HEIGHT_OPEN = 360
 local MENU_HEIGHT_MINIMIZED = 35
 
-local MAIN_FRAME_POS_CLOSED = UDim2.new(0, -MENU_WIDTH - 20, 0.1, 0)
-local MAIN_FRAME_POS_OPEN = UDim2.new(0, 20, 0.1, 0) 
+-- Forces the UI closed and off the left edge
+local MAIN_FRAME_POS_CLOSED = UDim2.new(0, -MENU_WIDTH - 30, 0.1, 0)
 
 local ANIM_TWEEN_INFO = TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 local TOGGLE_TWEEN_INFO = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -536,7 +536,7 @@ local FeatureList = {
 
 -- ================= 9. UI Generation (Phase 4 Overhaul) =================
 local activeScreenGui = nil
-local activeTpButton = nil
+local activeMainFrame = nil
 local isBuildingUI = false
 
 local function BuildUI()
@@ -549,22 +549,35 @@ local function BuildUI()
     screenGui.Name = GUI_NAME
     screenGui.ResetOnSpawn = false
 
+    -- [FIXED] Toggle Button with Red Accent Bar
     local toggleButton = Instance.new("TextButton", screenGui)
     toggleButton.Size = TOGGLE_BUTTON_SIZE
     toggleButton.Position = TOGGLE_BUTTON_POS
     toggleButton.Text = "OWP HUB"
-    toggleButton.BackgroundColor3 = C_TEXT_DARK
+    toggleButton.BackgroundColor3 = C_BG_ROW
     toggleButton.TextColor3 = C_TEXT_WHITE
     toggleButton.Font = FONT_BOLD
     toggleButton.TextScaled = true
     toggleButton.Draggable = true
     Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0, 6)
     Instance.new("UIStroke", toggleButton).Color = C_BORDER
+    
+    local toggleAccent = Instance.new("Frame", toggleButton)
+    toggleAccent.Size = UDim2.new(0, 3, 1, -14)
+    toggleAccent.Position = UDim2.new(0, 6, 0.5, 0)
+    toggleAccent.AnchorPoint = Vector2.new(0, 0.5)
+    toggleAccent.BackgroundColor3 = C_ACCENT_RED
+    toggleAccent.BorderSizePixel = 0
+    Instance.new("UICorner", toggleAccent).CornerRadius = UDim.new(1, 0)
+    
+    local togglePadding = Instance.new("UIPadding", toggleButton)
+    togglePadding.PaddingLeft = UDim.new(0, 6)
 
+    -- [FIXED] Teleport HUD Button with Dynamic Accent Bar
     local tpButton = Instance.new("TextButton", screenGui)
-    tpButton.Size = UDim2.new(0, 120, 0, 30)
-    tpButton.Position = UDim2.new(0, 10, 0, 45) 
-    tpButton.BackgroundColor3 = C_BG_TITLE
+    tpButton.Size = UDim2.new(0, 130, 0, 32)
+    tpButton.Position = UDim2.new(0, 10, 0, 48) 
+    tpButton.BackgroundColor3 = C_BG_ROW
     tpButton.TextColor3 = C_ACCENT_GREEN
     tpButton.Font = FONT_BOLD
     tpButton.TextScaled = true
@@ -574,15 +587,28 @@ local function BuildUI()
     Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 6)
     Instance.new("UIStroke", tpButton).Color = C_BORDER
 
+    local tpAccent = Instance.new("Frame", tpButton)
+    tpAccent.Size = UDim2.new(0, 3, 1, -14)
+    tpAccent.Position = UDim2.new(0, 6, 0.5, 0)
+    tpAccent.AnchorPoint = Vector2.new(0, 0.5)
+    tpAccent.BackgroundColor3 = C_ACCENT_GREEN
+    tpAccent.BorderSizePixel = 0
+    Instance.new("UICorner", tpAccent).CornerRadius = UDim.new(1, 0)
+
+    local tpPadding = Instance.new("UIPadding", tpButton)
+    tpPadding.PaddingLeft = UDim.new(0, 6)
+
+    -- Main Hub Frame
     local mainFrame = Instance.new("Frame", screenGui)
     mainFrame.Size = UDim2.new(0, MENU_WIDTH, 0, MENU_HEIGHT_OPEN)
-    mainFrame.Position = Config.GuiVisible and MAIN_FRAME_POS_OPEN or MAIN_FRAME_POS_CLOSED
+    mainFrame.Position = MAIN_FRAME_POS_CLOSED
     mainFrame.BackgroundColor3 = C_BG_MAIN
     mainFrame.BorderSizePixel = 0
     mainFrame.ClipsDescendants = true
     Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 8)
     Instance.new("UIStroke", mainFrame).Color = C_BORDER
 
+    -- Title Bar
     local titleBar = Instance.new("Frame", mainFrame)
     titleBar.Size = UDim2.new(1, 0, 0, MENU_HEIGHT_MINIMIZED)
     titleBar.BackgroundColor3 = C_BG_TITLE
@@ -612,19 +638,20 @@ local function BuildUI()
     local titleCorner = Instance.new("UICorner", titleBar)
     titleCorner.CornerRadius = UDim.new(0, 8)
     
+    -- [FIXED] Title Text adjusted to perfectly fit ALL CAPS and author text
     local titleText = Instance.new("TextLabel", titleBar)
-    titleText.Size = UDim2.new(0, 160, 1, 0)
+    titleText.Size = UDim2.new(0, 185, 1, 0)
     titleText.Position = UDim2.new(0, 10, 0, 0)
     titleText.BackgroundTransparency = 1
-    titleText.Text = "PETAPETA: School of Nightmares"
+    titleText.Text = "PETAPETA: SCHOOL OF NIGHTMARES"
     titleText.TextColor3 = C_TEXT_WHITE
     titleText.Font = FONT_BOLD
-    titleText.TextSize = 14
+    titleText.TextSize = 13
     titleText.TextXAlignment = Enum.TextXAlignment.Left
 
     local authorText = Instance.new("TextLabel", titleBar)
-    authorText.Size = UDim2.new(0, 100, 1, 0)
-    authorText.Position = UDim2.new(0, 185, 0, 0)
+    authorText.Size = UDim2.new(0, 65, 1, 0)
+    authorText.Position = UDim2.new(0, 190, 0, 0)
     authorText.BackgroundTransparency = 1
     authorText.Text = "BY: OtherWisePop"
     authorText.TextColor3 = C_TEXT_DIM
@@ -632,21 +659,22 @@ local function BuildUI()
     authorText.TextSize = 10
     authorText.TextXAlignment = Enum.TextXAlignment.Left
 
-    local controlsLayout = Instance.new("UIListLayout", titleBar)
+    --[FIXED] Controls fixed firmly to the right side
+    local controlsFrame = Instance.new("Frame", titleBar)
+    controlsFrame.Size = UDim2.new(0, 60, 1, 0)
+    controlsFrame.Position = UDim2.new(1, 0, 0, 0)
+    controlsFrame.AnchorPoint = Vector2.new(1, 0)
+    controlsFrame.BackgroundTransparency = 1
+
+    local controlsLayout = Instance.new("UIListLayout", controlsFrame)
     controlsLayout.FillDirection = Enum.FillDirection.Horizontal
     controlsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
     controlsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
     controlsLayout.Padding = UDim.new(0, 5)
+    controlsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-    local closeBtn = Instance.new("TextButton", titleBar)
-    closeBtn.Size = UDim2.new(0, 24, 0, 24)
-    closeBtn.BackgroundTransparency = 1
-    closeBtn.Text = "X"
-    closeBtn.TextColor3 = C_TEXT_DIM
-    closeBtn.Font = FONT_BOLD
-    closeBtn.TextSize = 14
-
-    local minBtn = Instance.new("TextButton", titleBar)
+    local minBtn = Instance.new("TextButton", controlsFrame)
+    minBtn.LayoutOrder = 1
     minBtn.Size = UDim2.new(0, 24, 0, 24)
     minBtn.BackgroundTransparency = 1
     minBtn.Text = "-"
@@ -654,8 +682,18 @@ local function BuildUI()
     minBtn.Font = FONT_BOLD
     minBtn.TextSize = 16
 
-    Instance.new("UIPadding", titleBar).PaddingRight = UDim.new(0, 5)
+    local closeBtn = Instance.new("TextButton", controlsFrame)
+    closeBtn.LayoutOrder = 2
+    closeBtn.Size = UDim2.new(0, 24, 0, 24)
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.Text = "X"
+    closeBtn.TextColor3 = C_TEXT_DIM
+    closeBtn.Font = FONT_BOLD
+    closeBtn.TextSize = 14
 
+    Instance.new("UIPadding", controlsFrame).PaddingRight = UDim.new(0, 5)
+
+    -- Scrolling Frame
     local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
     scrollFrame.Size = UDim2.new(1, 0, 1, -MENU_HEIGHT_MINIMIZED)
     scrollFrame.Position = UDim2.new(0, 0, 0, MENU_HEIGHT_MINIMIZED)
@@ -748,8 +786,8 @@ local function BuildUI()
             if feature.Action then feature.Action(Config[feature.Key]) end
             SaveConfig()
             
-            if feature.Key == "TeleportHUD" and activeTpButton then
-                activeTpButton.Visible = Config.TeleportHUD
+            if feature.Key == "TeleportHUD" and _G.OWP_TP_Button then
+                _G.OWP_TP_Button.Visible = Config.TeleportHUD
             end
         end)
 
@@ -763,9 +801,15 @@ local function BuildUI()
         CreateButton(feature, order)
     end
 
+    -- [FIXED] Robust Menu Animations (Slides perfectly to left edge while keeping Y)
     local function ToggleMenu()
         Config.GuiVisible = not Config.GuiVisible
-        local targetPos = Config.GuiVisible and MAIN_FRAME_POS_OPEN or MAIN_FRAME_POS_CLOSED
+        local currentYScale = mainFrame.Position.Y.Scale
+        local currentYOffset = mainFrame.Position.Y.Offset
+        
+        local targetX = Config.GuiVisible and 20 or (-MENU_WIDTH - 30)
+        local targetPos = UDim2.new(0, targetX, currentYScale, currentYOffset)
+        
         TweenService:Create(mainFrame, ANIM_TWEEN_INFO, {Position = targetPos}):Play()
         SaveConfig()
     end
@@ -811,7 +855,9 @@ local function BuildUI()
     end)
 
     activeScreenGui = screenGui
+    activeMainFrame = mainFrame
     _G.OWP_TP_Button = tpButton
+    _G.OWP_TP_Accent = tpAccent
 end
 
 -- ================= 10. Initialization, Failsafes & Hooks =================
@@ -855,6 +901,7 @@ task.spawn(function()
     end
 end)
 
+-- TP HUD Loop (Syncs text color with the new left Accent Line)
 task.spawn(function()
     while task.wait(0.1) do
         if isUnloaded then break end
@@ -872,6 +919,7 @@ task.spawn(function()
         if _G.OWP_TP_Button.Text ~= newState then
             _G.OWP_TP_Button.Text = newState
             _G.OWP_TP_Button.TextColor3 = newColor
+            if _G.OWP_TP_Accent then _G.OWP_TP_Accent.BackgroundColor3 = newColor end
         end
     end
 end)
@@ -926,4 +974,4 @@ _G.OWP_PetaHub_Unload = function()
     end
 end
 
-print("✅ PETAPETA: School of Nightmares V15.3 (Phase 4: Double Fix) - Loaded")
+print("✅ PETAPETA: School of Nightmares V15.4 (Phase 4: Visual Polish) - Loaded")
