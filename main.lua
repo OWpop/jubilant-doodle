@@ -8,7 +8,7 @@ if queue_on_teleport then
 end
 
 --[[
-    PETAPETA: School of Nightmares V15.0 (Phase 4: Premium UI & Theme Engine)
+    PETAPETA: School of Nightmares V14.6 (Phase 4.1: The Shell & Loader)
     By: OtherWisePop
     USE RESPONSIBLY AND AT YOUR OWN RISK.
 --]]
@@ -20,7 +20,6 @@ local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 if not player then
@@ -29,12 +28,20 @@ if not player then
 end
 local playerGui = player:WaitForChild("PlayerGui")
 
-local GUI_NAME = "OWP_PetaHub_V15_0_" .. tostring(math.random(10000, 99999))
+local GUI_NAME = "OWP_PetaHub_V14_6_" .. tostring(math.random(10000, 99999))
 local CONFIG_FILE_NAME = "OWP_PetaHub_Config.json"
+local FONT_BOLD = Enum.Font.SourceSansBold
 
-local FONT_REGULAR = Enum.Font.Gotham
-local FONT_BOLD = Enum.Font.GothamBold
-local FONT_SEMIBOLD = Enum.Font.GothamSemibold
+-- Colors
+local COLOR_PRIMARY_BG = Color3.fromRGB(20, 20, 20)
+local COLOR_SECONDARY_BG = Color3.fromRGB(35, 35, 35)
+local COLOR_BORDER = Color3.fromRGB(60, 60, 60)
+local COLOR_TEXT_LIGHT = Color3.fromRGB(255, 255, 255)
+local COLOR_TEXT_DARK = Color3.fromRGB(0, 0, 0)
+local COLOR_ACCENT_GREEN = Color3.fromRGB(0, 255, 0)
+local COLOR_ACCENT_YELLOW = Color3.fromRGB(255, 255, 0)
+local COLOR_ACCENT_RED = Color3.fromRGB(255, 50, 50)
+local COLOR_ACCENT_CYAN = Color3.fromRGB(0, 200, 255)
 
 -- Configuration Constants
 local WALK_SPEEDS = {16, 20, 30, 40, 50}
@@ -49,17 +56,9 @@ local VOID_THRESHOLD = -100
 local VOID_TELEPORT_HEIGHT = 50 
 local ENFORCE_SPEED_DURATION = 8 
 
--- Status Colors (Used specifically for TP warnings)
-local STATUS_GREEN = Color3.fromRGB(46, 204, 113)
-local STATUS_YELLOW = Color3.fromRGB(241, 196, 15)
-local STATUS_RED = Color3.fromRGB(231, 76, 60)
-local STATUS_CYAN = Color3.fromRGB(52, 152, 219)
-
 -- ================= 2. Centralized State =================
--- Config MUST start with GuiVisible = false as requested
 local Config = {
-    GuiVisible = false, 
-    Theme = "Dark",
+    GuiVisible = false,
     SpeedIndex = 2,
     NoClip = false,
     FullBright = false,
@@ -74,16 +73,33 @@ local Config = {
 }
 
 local Engine = {
-    Cache = { Keys = {}, Fires = {}, Prompts = {} },
-    ESPBeams = {}, ESPAttachments = {}, ESPConnections = {}, ESPUpdateRunning = false,
-    NoClipConnection = nil, FullBrightConnection = nil, AntiVoidConnection = nil, AntiFreezeConnection = nil,
-    SpeedEnforceRunning = false, SpeedEnforceCancelTime = 0, HiddenFires = {}, 
-    TPCooldownEnd = 0, TPWarningEnd = 0, TPWarningText = ""
+    Cache = {
+        Keys = {},
+        Fires = {},
+        Prompts = {}
+    },
+    ESPBeams = {},
+    ESPAttachments = {},
+    ESPConnections = {},
+    ESPUpdateRunning = false,
+    NoClipConnection = nil,
+    FullBrightConnection = nil,
+    AntiVoidConnection = nil,
+    AntiFreezeConnection = nil,
+    SpeedEnforceRunning = false,
+    SpeedEnforceCancelTime = 0,
+    HiddenFires = {}, 
+    TPCooldownEnd = 0,
+    TPWarningEnd = 0,
+    TPWarningText = ""
 }
 
 local initialLighting = {
-	Ambient = Lighting.Ambient, OutdoorAmbient = Lighting.OutdoorAmbient,
-	Brightness = Lighting.Brightness, FogEnd = Lighting.FogEnd, GlobalShadows = Lighting.GlobalShadows,
+	Ambient = Lighting.Ambient,
+	OutdoorAmbient = Lighting.OutdoorAmbient,
+	Brightness = Lighting.Brightness,
+	FogEnd = Lighting.FogEnd,
+	GlobalShadows = Lighting.GlobalShadows,
 }
 
 -- ================= 3. State Persistence =================
@@ -107,21 +123,18 @@ end
 
 local function SaveConfig()
     if not writefile then return end
-    pcall(function() writefile(CONFIG_FILE_NAME, HttpService:JSONEncode(Config)) end)
+    pcall(function()
+        local json = HttpService:JSONEncode(Config)
+        writefile(CONFIG_FILE_NAME, json)
+    end)
 end
 
 LoadConfig()
 
--- Force GuiVisible false on initial injection to allow animation
-Config.GuiVisible = false 
+-- CRITICAL FIX: Force UI closed on initial load so it animates in nicely
+Config.GuiVisible = false
 
 -- ================= 4. Helper Functions =================
-local function Tween(obj, props, time)
-    local tw = TweenService:Create(obj, TweenInfo.new(time or 0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props)
-    tw:Play()
-    return tw
-end
-
 local function GetDictKeys(dict)
     local keys = {}
     for k in pairs(dict) do table.insert(keys, k) end
@@ -129,55 +142,69 @@ local function GetDictKeys(dict)
 end
 
 local function isPlayerHoldingAnyKey()
-    local function scan(container)
+    local function scanForKeywords(container)
         if not container then return false end
         for _, obj in ipairs(container:GetDescendants()) do
             if obj:IsA("Tool") or obj:IsA("Model") or obj:IsA("BasePart") then
                 local lowerName = obj.Name:lower()
-                for _, n in ipairs(IMPORTANT_ITEM_NAMES) do if string.find(lowerName, n:lower()) then return true end end
+                for _, targetName in ipairs(IMPORTANT_ITEM_NAMES) do
+                    if string.find(lowerName, targetName:lower()) then return true end
+                end
                 if string.find(lowerName, "key") then return true end
             end
         end
         return false
     end
-    if scan(player.Character) then return true end
-    if scan(player.Backpack) then return true end
-    if Workspace.CurrentCamera and scan(Workspace.CurrentCamera) then return true end
-    if player.Character then for _, child in ipairs(player.Character:GetChildren()) do if child:IsA("Tool") then return true end end end
+    if scanForKeywords(player.Character) then return true end
+    if scanForKeywords(player.Backpack) then return true end
+    if Workspace.CurrentCamera and scanForKeywords(Workspace.CurrentCamera) then return true end
+    if player.Character then
+        for _, child in ipairs(player.Character:GetChildren()) do
+            if child:IsA("Tool") then return true end
+        end
+    end
     return false
 end
 
 local function isItemOnGround(obj)
-	if not obj or not obj:IsDescendantOf(Workspace) then return false end
-	local p = obj.Parent
-	while p and p ~= Workspace do
-		if p:IsA("Model") and p:FindFirstChild("Humanoid") then return false end
-		p = p.Parent
+	if not obj then return false end
+	if not obj:IsDescendantOf(Workspace) then return false end
+	local parent = obj.Parent
+	while parent and parent ~= Workspace do
+		if parent:IsA("Model") and parent:FindFirstChild("Humanoid") then return false end
+		parent = parent.Parent
 	end
 	if Workspace.CurrentCamera and obj:IsDescendantOf(Workspace.CurrentCamera) then return false end
 	return true
 end
 
-local function isWithinRelativeBounds(tPos, pPos)
-    local off = tPos - pPos
-    if math.abs(off.Y) > RELATIVE_Y_BOUND or math.abs(off.X) > RELATIVE_XZ_BOUND or math.abs(off.Z) > RELATIVE_XZ_BOUND then return false end
+local function isWithinRelativeBounds(targetPos, playerPos)
+    local offset = targetPos - playerPos
+    if math.abs(offset.Y) > RELATIVE_Y_BOUND then return false end
+    if math.abs(offset.X) > RELATIVE_XZ_BOUND then return false end
+    if math.abs(offset.Z) > RELATIVE_XZ_BOUND then return false end
     return true
 end
 
 -- ================= 5. Master Cache System =================
 local function CheckFireText(obj, text)
     if not text then return end
-    if string.find(text:lower(), "fire") or string.find(text:lower(), "extinguish") or string.find(text:lower(), "flame") then Engine.Cache.Fires[obj] = true end
+    text = text:lower()
+    if string.find(text, "fire") or string.find(text, "extinguish") or string.find(text, "flame") then
+        Engine.Cache.Fires[obj] = true
+    end
 end
 
 local function CategorizeObject(obj)
-    local cls, lowerName = obj.ClassName, obj.Name:lower()
+    local cls = obj.ClassName
+    local lowerName = obj.Name:lower()
     
     if cls == "ProximityPrompt" then
         local action, name, object = obj.ActionText:lower(), lowerName, obj.ObjectText:lower()
         if string.find(action, "search") or string.find(name, "search") then Engine.Cache.Prompts[obj] = true end
         CheckFireText(obj, action)
         CheckFireText(obj, object)
+
         obj:GetPropertyChangedSignal("ActionText"):Connect(function()
             local a = obj.ActionText:lower()
             if string.find(a, "search") then Engine.Cache.Prompts[obj] = true end
@@ -193,7 +220,9 @@ local function CategorizeObject(obj)
     end
 
     local isKey = false
-    for _, n in ipairs(IMPORTANT_ITEM_NAMES) do if string.find(lowerName, n:lower()) then isKey = true; break end end
+    for _, n in ipairs(IMPORTANT_ITEM_NAMES) do
+        if string.find(lowerName, n:lower()) then isKey = true; break end
+    end
     if not isKey and string.find(lowerName, "key") then isKey = true end
     if isKey and (cls == "Tool" or cls == "Model" or obj:IsA("BasePart")) then Engine.Cache.Keys[obj] = true end
     if string.find(lowerName, "fire") or string.find(lowerName, "extinguish") or string.find(lowerName, "flame") then Engine.Cache.Fires[obj] = true end
@@ -201,15 +230,24 @@ end
 
 for _, obj in ipairs(Workspace:GetDescendants()) do CategorizeObject(obj) end
 Workspace.DescendantAdded:Connect(CategorizeObject)
-Workspace.DescendantRemoving:Connect(function(obj) Engine.Cache.Keys[obj] = nil; Engine.Cache.Fires[obj] = nil; Engine.Cache.Prompts[obj] = nil end)
+
+Workspace.DescendantRemoving:Connect(function(obj)
+    Engine.Cache.Keys[obj] = nil
+    Engine.Cache.Fires[obj] = nil
+    Engine.Cache.Prompts[obj] = nil
+end)
 
 -- ================= 6. Core Logic Functions =================
 local function cleanEspForItem(obj)
 	if not obj then return end
 	if Engine.ESPBeams[obj] then Engine.ESPBeams[obj]:Destroy(); Engine.ESPBeams[obj] = nil end
 	if Engine.ESPAttachments[obj] then Engine.ESPAttachments[obj]:Destroy(); Engine.ESPAttachments[obj] = nil end
-	if Engine.ESPConnections[obj] then for _, c in ipairs(Engine.ESPConnections[obj]) do c:Disconnect() end; Engine.ESPConnections[obj] = nil end
+	if Engine.ESPConnections[obj] then
+		for _, conn in ipairs(Engine.ESPConnections[obj]) do conn:Disconnect() end
+		Engine.ESPConnections[obj] = nil
+	end
 end
+
 local function cleanupAllEsp()
 	local objectsToClean = {}
 	for obj, _ in pairs(Engine.ESPBeams) do table.insert(objectsToClean, obj) end
@@ -219,6 +257,7 @@ end
 
 local function createEspForItem(obj)
 	if not obj or Engine.ESPBeams[obj] or not obj.Parent then return end
+
 	local adornee = obj:FindFirstChild("Handle") or obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
 	if not adornee or not adornee:IsA("BasePart") or not adornee.Parent then return end
 
@@ -228,18 +267,25 @@ local function createEspForItem(obj)
 
     local originAttach = root:FindFirstChild("OWP_OriginAttach")
     if not originAttach then 
-        originAttach = Instance.new("Attachment", root); originAttach.Name = "OWP_OriginAttach"
+        originAttach = Instance.new("Attachment", root)
+        originAttach.Name = "OWP_OriginAttach"
     end
 
 	local targetAttach = Instance.new("Attachment", adornee)
 	local beam = Instance.new("Beam")
-	beam.Attachment0 = originAttach; beam.Attachment1 = targetAttach; beam.Width0 = 0.1; beam.Width1 = 0.1; beam.FaceCamera = true
+	beam.Attachment0 = originAttach
+	beam.Attachment1 = targetAttach
+	beam.Width0 = 0.1
+	beam.Width1 = 0.1
+	beam.FaceCamera = true
 	beam.Color = ColorSequence.new(Config.FullBright and COLOR_ACCENT_CYAN or COLOR_ACCENT_GREEN)
 	beam.Transparency = NumberSequence.new(Config.FullBright and 0.1 or 0.3)
 	beam.LightEmission = Config.FullBright and 0.6 or 0.35
 	beam.Parent = Workspace:FindFirstChildOfClass("Terrain") or Workspace
 
-	Engine.ESPBeams[obj] = beam; Engine.ESPAttachments[obj] = targetAttach
+	Engine.ESPBeams[obj] = beam
+	Engine.ESPAttachments[obj] = targetAttach
+
 	local connections = {}
 	table.insert(connections, obj.Destroying:Connect(function() cleanEspForItem(obj) end))
 	table.insert(connections, adornee.Destroying:Connect(function() cleanEspForItem(obj) end))
@@ -267,11 +313,15 @@ local function updateEspBeamsThrottled()
                 local adornee = targetAttachment and targetAttachment.Parent
                 local isValid = targetAttachment and adornee and adornee.Parent and adornee:IsA("BasePart")
                 if isValid then
-                    if not isItemOnGround(adornee) or not isWithinRelativeBounds(adornee.Position, root.Position) then isValid = false
-                    elseif Config.ESPDistance and (adornee.Position - root.Position).Magnitude > MAX_ESP_DISTANCE then isValid = false end
+                    if not isItemOnGround(adornee) or not isWithinRelativeBounds(adornee.Position, root.Position) then
+                        isValid = false
+                    elseif Config.ESPDistance and (adornee.Position - root.Position).Magnitude > MAX_ESP_DISTANCE then
+                        isValid = false 
+                    end
                 end
                 if not isValid then table.insert(itemsToClean, obj) end
             end
+
             for _, objToClean in ipairs(itemsToClean) do cleanEspForItem(objToClean) end
             for _, obj in ipairs(GetDictKeys(Engine.Cache.Keys)) do pcall(createEspForItem, obj) end
         end)
@@ -283,7 +333,9 @@ end
 local function hideFire(obj)
     local target = obj
     if obj:IsA("ProximityPrompt") or obj:IsA("ParticleEmitter") or obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") then
-        if obj.Parent and obj.Parent:IsA("BasePart") and obj.Parent.Size.Magnitude <= 50 then target = obj.Parent end
+        if obj.Parent and obj.Parent:IsA("BasePart") and obj.Parent.Size.Magnitude <= 50 then
+            target = obj.Parent
+        end
     end
     if Engine.HiddenFires[target] then return end
     Engine.HiddenFires[target] = {Parent = target.Parent}
@@ -292,8 +344,10 @@ end
 
 -- ================= 7. Centralized Physics & Background Engine =================
 RunService.Stepped:Connect(function()
-    local char, hum, root = player.Character, nil, nil
-    if char then hum = char:FindFirstChild("Humanoid"); root = char:FindFirstChild("HumanoidRootPart") end
+    local char = player.Character
+    local hum = char and char:FindFirstChild("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    
     if hum and root then
         local desiredSpeed = WALK_SPEEDS[Config.SpeedIndex]
         if Config.AntiFreeze then
@@ -315,7 +369,11 @@ end)
 
 task.spawn(function()
     while task.wait(0.1) do
-        if Config.BypassFire then for _, obj in ipairs(GetDictKeys(Engine.Cache.Fires)) do if obj and obj.Parent then pcall(hideFire, obj) end end end
+        if Config.BypassFire then 
+            for _, obj in ipairs(GetDictKeys(Engine.Cache.Fires)) do
+                if obj and obj.Parent then pcall(hideFire, obj) end
+            end
+        end
         if Config.SearchAura then
             local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
             if root then
@@ -333,13 +391,15 @@ task.spawn(function()
 end)
 
 -- ================= 8. Feature Registration List =================
+-- Handled globally so loops/hooks keep working even if UI is not generated.
 local FeatureList = {
     {Name = "Speed", Key = "SpeedIndex", Type = "Cycle", CycleOptions = WALK_SPEEDS, Action = function(val)
         Engine.SpeedEnforceCancelTime = tick() + ENFORCE_SPEED_DURATION
         Engine.SpeedEnforceRunning = true
     end, OnCharacterAdded = function(char, hum)
         if hum then hum.WalkSpeed = WALK_SPEEDS[Config.SpeedIndex] end
-        Engine.SpeedEnforceCancelTime = tick() + ENFORCE_SPEED_DURATION; Engine.SpeedEnforceRunning = true
+        Engine.SpeedEnforceCancelTime = tick() + ENFORCE_SPEED_DURATION
+        Engine.SpeedEnforceRunning = true
     end},
     
     {Name = "NoClip", Key = "NoClip", Type = "Toggle", Action = function(val)
@@ -362,7 +422,10 @@ local FeatureList = {
             end
         end
     end, OnCharacterAdded = function(char, hum)
-        if Engine.NoClipConnection then Engine.NoClipConnection:Disconnect(); Engine.NoClipConnection = nil end
+        if Engine.NoClipConnection then 
+            Engine.NoClipConnection:Disconnect() 
+            Engine.NoClipConnection = nil 
+        end
         if Config.NoClip then
             task.spawn(function()
                 task.wait(0.5) 
@@ -419,7 +482,9 @@ local FeatureList = {
     {Name = "Speed Lock", Key = "SpeedLock", Type = "Toggle", Action = nil},
     {Name = "Bypass Fire", Key = "BypassFire", Type = "Toggle", Action = function(val)
         if not val then
-            for obj, data in pairs(Engine.HiddenFires) do if obj then pcall(function() obj.Parent = data.Parent end) end end
+            for obj, data in pairs(Engine.HiddenFires) do
+                if obj then pcall(function() obj.Parent = data.Parent end) end
+            end
             table.clear(Engine.HiddenFires)
         end
     end},
@@ -428,356 +493,284 @@ local FeatureList = {
 }
 
 
--- ================= 9. UI THEME ENGINE & FACTORY =================
-local activeScreenGui, activeTpButton = nil, nil
+-- ================= 9. Modern Shell & Premium Loader (Phase 4.1) =================
+local activeScreenGui = nil
+local activeTpButton = nil
 local isBuildingUI = false
-local isMinimized = false
-
-local THEMES = {
-    Dark = { BG = Color3.fromRGB(30, 30, 35), SecBG = Color3.fromRGB(45, 45, 50), Border = Color3.fromRGB(60, 60, 65), Text = Color3.fromRGB(240, 240, 240), Accent = Color3.fromRGB(0, 210, 150) },
-    Light = { BG = Color3.fromRGB(240, 240, 245), SecBG = Color3.fromRGB(220, 220, 225), Border = Color3.fromRGB(180, 180, 185), Text = Color3.fromRGB(30, 30, 30), Accent = Color3.fromRGB(0, 120, 255) },
-    Red = { BG = Color3.fromRGB(25, 15, 15), SecBG = Color3.fromRGB(45, 25, 25), Border = Color3.fromRGB(80, 30, 30), Text = Color3.fromRGB(255, 220, 220), Accent = Color3.fromRGB(255, 60, 60) },
-    Blue = { BG = Color3.fromRGB(15, 20, 35), SecBG = Color3.fromRGB(25, 35, 55), Border = Color3.fromRGB(40, 60, 90), Text = Color3.fromRGB(220, 235, 255), Accent = Color3.fromRGB(60, 160, 255) }
-}
-
--- Registry to instantly tween all components on theme change
-local ThemeRegistry = { Backgrounds = {}, SecBackgrounds = {}, Texts = {}, Strokes = {}, Toggles = {} }
-
-local function ApplyTheme(themeName)
-    if not THEMES[themeName] then themeName = "Dark" end
-    local T = THEMES[themeName]
-    
-    for _, obj in ipairs(ThemeRegistry.Backgrounds) do if obj.Parent then Tween(obj, {BackgroundColor3 = T.BG}, 0.3) end end
-    for _, obj in ipairs(ThemeRegistry.SecBackgrounds) do if obj.Parent then Tween(obj, {BackgroundColor3 = T.SecBG}, 0.3) end end
-    for _, obj in ipairs(ThemeRegistry.Texts) do if obj.Parent then Tween(obj, {TextColor3 = T.Text}, 0.3) end end
-    for _, obj in ipairs(ThemeRegistry.Strokes) do if obj.Parent then Tween(obj, {Color = T.Border}, 0.3) end end
-    
-    for _, tog in ipairs(ThemeRegistry.Toggles) do
-        if not tog.Pill.Parent then continue end
-        if Config[tog.Key] then Tween(tog.Pill, {BackgroundColor3 = T.Accent}, 0.3)
-        else Tween(tog.Pill, {BackgroundColor3 = T.SecBG}, 0.3) end
-    end
-    
-    -- Specific override for Toggle UI Button to match accent
-    local summonBtn = activeScreenGui and activeScreenGui:FindFirstChild("ToggleButton")
-    if summonBtn then Tween(summonBtn, {BackgroundColor3 = T.Accent, TextColor3 = Color3.fromRGB(255,255,255)}, 0.3) end
-end
 
 local function BuildUI()
     local guiParent = (gethui and gethui()) or game:GetService("CoreGui") or playerGui
     for _, child in ipairs(guiParent:GetChildren()) do
         if string.match(child.Name, "^OWP_PetaHub") then pcall(function() child:Destroy() end) end
     end
-    
-    -- Reset Registry
-    ThemeRegistry = { Backgrounds = {}, SecBackgrounds = {}, Texts = {}, Strokes = {}, Toggles = {} }
 
     local screenGui = Instance.new("ScreenGui", guiParent)
     screenGui.Name = GUI_NAME
     screenGui.ResetOnSpawn = false
 
-    -- [PREMIUM LOADER] Only runs once per execution
-    if not _G.OWP_LoaderPlayed then
-        local loader = Instance.new("Frame", screenGui)
-        loader.Size = UDim2.new(1, 0, 1, 0)
-        loader.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-        loader.ZIndex = 9999
-        
-        local loaderText = Instance.new("TextLabel", loader)
+    -- === THE PREMIUM LOADER ===
+    local isFirstLoad = not _G.OWP_Loader_Played
+    if isFirstLoad then
+        _G.OWP_Loader_Played = true
+        local loaderFrame = Instance.new("Frame", screenGui)
+        loaderFrame.Size = UDim2.new(1, 0, 1, 0)
+        loaderFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        loaderFrame.ZIndex = 1000
+
+        local loaderText = Instance.new("TextLabel", loaderFrame)
         loaderText.Size = UDim2.new(1, 0, 1, 0)
         loaderText.BackgroundTransparency = 1
         loaderText.Text = "PETAPETA: School of Nightmares\nBy: OTHERWISEPOP"
-        loaderText.TextColor3 = Color3.fromRGB(255, 255, 255)
+        loaderText.TextColor3 = COLOR_TEXT_LIGHT
         loaderText.Font = FONT_BOLD
-        loaderText.TextSize = 24
-        
+        loaderText.TextSize = 22
+        loaderText.ZIndex = 1001
+
         task.spawn(function()
-            task.wait(4)
-            Tween(loaderText, {TextTransparency = 1}, 1)
-            local fade = Tween(loader, {BackgroundTransparency = 1}, 1)
-            fade.Completed:Wait()
-            loader:Destroy()
-            _G.OWP_LoaderPlayed = true
+            task.wait(5)
+            local fadeInfo = TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+            TweenService:Create(loaderFrame, fadeInfo, {BackgroundTransparency = 1}):Play()
+            TweenService:Create(loaderText, fadeInfo, {TextTransparency = 1}):Play()
+            task.wait(1)
+            loaderFrame:Destroy()
         end)
     end
 
-    -- 1. Summon Button (Top Left)
+    -- === EXTERNAL BUTTONS ===
     local toggleButton = Instance.new("TextButton", screenGui)
-    toggleButton.Name = "ToggleButton"
-    toggleButton.Size = UDim2.new(0, 90, 0, 35)
-    toggleButton.Position = UDim2.new(0, 15, 0, 15)
+    toggleButton.Size = UDim2.new(0, 80, 0, 30)
+    toggleButton.Position = UDim2.new(0, 10, 0, 10)
     toggleButton.Text = "OWP HUB"
+    toggleButton.BackgroundColor3 = COLOR_TEXT_DARK
+    toggleButton.TextColor3 = COLOR_TEXT_LIGHT
     toggleButton.Font = FONT_BOLD
-    toggleButton.TextSize = 14
+    toggleButton.TextScaled = true
     toggleButton.Draggable = true
-    Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0, 8)
+    
+    -- Hide toggle during loader
+    if isFirstLoad then
+        toggleButton.Visible = false
+        task.spawn(function()
+            task.wait(6)
+            toggleButton.Visible = true
+        end)
+    end
 
-    -- 2. Teleport Action HUD
     local tpButton = Instance.new("TextButton", screenGui)
-    tpButton.Name = "TPHUDButton"
-    tpButton.Size = UDim2.new(0, 140, 0, 35)
-    tpButton.Position = UDim2.new(0, 15, 0, 60) 
+    tpButton.Size = UDim2.new(0, 120, 0, 30)
+    tpButton.Position = UDim2.new(0, 10, 0, 45) 
     tpButton.BackgroundColor3 = COLOR_SECONDARY_BG
     tpButton.TextColor3 = COLOR_ACCENT_GREEN
     tpButton.Font = FONT_BOLD
-    tpButton.TextSize = 14
+    tpButton.TextScaled = true
     tpButton.Text = "Teleport To Key"
-    tpButton.Visible = Config.TeleportHUD
+    tpButton.Visible = Config.TeleportHUD and not isFirstLoad
     tpButton.Draggable = true
-    Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8)
-    local tpStroke = Instance.new("UIStroke", tpButton); tpStroke.Thickness = 2
-    table.insert(ThemeRegistry.SecBackgrounds, tpButton)
-    table.insert(ThemeRegistry.Strokes, tpStroke)
-
-    -- 3. Main Window Frame
-    local mainFrame = Instance.new("Frame", screenGui)
-    mainFrame.Size = UDim2.new(0, 260, 0, 420)
-    mainFrame.Position = UDim2.new(0.5, -130, 0.1, 0)
-    mainFrame.Visible = Config.GuiVisible
-    mainFrame.ClipsDescendants = true -- Required for Minimize animation
-    mainFrame.Active = true
-    mainFrame.Draggable = true
-    Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 10)
-    local mainStroke = Instance.new("UIStroke", mainFrame); mainStroke.Thickness = 2
-    table.insert(ThemeRegistry.Backgrounds, mainFrame)
-    table.insert(ThemeRegistry.Strokes, mainStroke)
-
-    -- 4. Header Bar
-    local header = Instance.new("Frame", mainFrame)
-    header.Size = UDim2.new(1, 0, 0, 40)
-    header.BackgroundTransparency = 1
     
-    local title = Instance.new("TextLabel", header)
-    title.Size = UDim2.new(1, -70, 1, 0)
-    title.Position = UDim2.new(0, 15, 0, 0)
-    title.BackgroundTransparency = 1
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Text = "OWP HUB"
-    title.Font = FONT_BOLD
-    title.TextSize = 16
-    table.insert(ThemeRegistry.Texts, title)
-
-    -- Window Controls
-    local minBtn = Instance.new("TextButton", header)
-    minBtn.Size = UDim2.new(0, 30, 0, 30)
-    minBtn.Position = UDim2.new(1, -65, 0, 5)
-    minBtn.BackgroundTransparency = 1
-    minBtn.Text = "—"
-    minBtn.Font = FONT_BOLD
-    minBtn.TextSize = 18
-    table.insert(ThemeRegistry.Texts, minBtn)
-
-    local closeBtn = Instance.new("TextButton", header)
-    closeBtn.Size = UDim2.new(0, 30, 0, 30)
-    closeBtn.Position = UDim2.new(1, -35, 0, 5)
-    closeBtn.BackgroundTransparency = 1
-    closeBtn.Text = "X"
-    closeBtn.Font = FONT_BOLD
-    closeBtn.TextSize = 18
-    table.insert(ThemeRegistry.Texts, closeBtn)
-
-    -- 5. Scrolling Content
-    local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
-    scrollFrame.Size = UDim2.new(1, 0, 1, -90) -- Leaves 40 for header, 50 for footer
-    scrollFrame.Position = UDim2.new(0, 0, 0, 40)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.ScrollBarThickness = 2
-    scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    
-    local layout = Instance.new("UIListLayout", scrollFrame)
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 8)
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    Instance.new("UIPadding", scrollFrame).PaddingTop = UDim.new(0, 5)
-
-    -- Feature Row Builder (The Sliding Switch)
-    local function CreateRow(feature, order)
-        local row = Instance.new("Frame", scrollFrame)
-        row.Size = UDim2.new(1, -30, 0, 36)
-        row.BackgroundTransparency = 1
-        row.LayoutOrder = order
-
-        local label = Instance.new("TextLabel", row)
-        label.Size = UDim2.new(0.6, 0, 1, 0)
-        label.BackgroundTransparency = 1
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Text = feature.Name
-        label.Font = FONT_SEMIBOLD
-        label.TextSize = 14
-        table.insert(ThemeRegistry.Texts, label)
-
-        if feature.Type == "Toggle" then
-            -- Sliding Pill Container
-            local pill = Instance.new("TextButton", row)
-            pill.Size = UDim2.new(0, 44, 0, 22)
-            pill.Position = UDim2.new(1, -44, 0.5, -11)
-            pill.Text = ""
-            Instance.new("UICorner", pill).CornerRadius = UDim.new(1, 0)
-            
-            -- Inner Knob
-            local knob = Instance.new("Frame", pill)
-            knob.Size = UDim2.new(0, 18, 0, 18)
-            knob.AnchorPoint = Vector2.new(0, 0.5)
-            knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
-
-            table.insert(ThemeRegistry.Toggles, {Pill = pill, Knob = knob, Key = feature.Key})
-
-            local function updateToggleVisual()
-                if Config[feature.Key] then
-                    Tween(knob, {Position = UDim2.new(1, -20, 0.5, 0)}, 0.25)
-                    Tween(pill, {BackgroundColor3 = THEMES[Config.Theme].Accent}, 0.25)
-                else
-                    Tween(knob, {Position = UDim2.new(0, 2, 0.5, 0)}, 0.25)
-                    Tween(pill, {BackgroundColor3 = THEMES[Config.Theme].SecBG}, 0.25)
-                end
-            end
-            feature._updateVisuals = updateToggleVisual
-
-            pill.MouseButton1Click:Connect(function()
-                Config[feature.Key] = not Config[feature.Key]
-                updateToggleVisual()
-                if feature.Action then feature.Action(Config[feature.Key]) end
-                SaveConfig()
-                if feature.Key == "TeleportHUD" and activeTpButton then activeTpButton.Visible = Config.TeleportHUD end
-            end)
-            updateToggleVisual()
-
-        elseif feature.Type == "Cycle" then
-            -- Interactive Number Pill
-            local pill = Instance.new("TextButton", row)
-            pill.Size = UDim2.new(0, 50, 0, 24)
-            pill.Position = UDim2.new(1, -50, 0.5, -12)
-            pill.Font = FONT_BOLD
-            pill.TextSize = 14
-            Instance.new("UICorner", pill).CornerRadius = UDim.new(0, 6)
-            table.insert(ThemeRegistry.SecBackgrounds, pill)
-            table.insert(ThemeRegistry.Texts, pill)
-
-            local function updateCycleVisual()
-                pill.Text = tostring(feature.CycleOptions[Config[feature.Key]])
-            end
-            feature._updateVisuals = updateCycleVisual
-
-            pill.MouseButton1Click:Connect(function()
-                -- Pulse Animation
-                Tween(pill, {Size = UDim2.new(0, 45, 0, 20), Position = UDim2.new(1, -47, 0.5, -10)}, 0.1).Completed:Wait()
-                
-                Config[feature.Key] = (Config[feature.Key] % #feature.CycleOptions) + 1
-                updateCycleVisual()
-                if feature.Action then feature.Action(Config[feature.Key]) end
-                SaveConfig()
-                
-                -- Pop Back
-                Tween(pill, {Size = UDim2.new(0, 50, 0, 24), Position = UDim2.new(1, -50, 0.5, -12), BackgroundColor3 = THEMES[Config.Theme].Accent}, 0.1).Completed:Wait()
-                Tween(pill, {BackgroundColor3 = THEMES[Config.Theme].SecBG}, 0.3)
-            end)
-            updateCycleVisual()
-        end
-    end
-
-    for order, feature in ipairs(FeatureList) do CreateRow(feature, order) end
-
-    -- 6. Theme Selector Footer
-    local footer = Instance.new("Frame", mainFrame)
-    footer.Size = UDim2.new(1, 0, 0, 50)
-    footer.Position = UDim2.new(0, 0, 1, -50)
-    footer.BackgroundTransparency = 1
-
-    local themeLayout = Instance.new("UIListLayout", footer)
-    themeLayout.FillDirection = Enum.FillDirection.Horizontal
-    themeLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    themeLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    themeLayout.Padding = UDim.new(0, 15)
-
-    for themeName, colors in pairs(THEMES) do
-        local btn = Instance.new("TextButton", footer)
-        btn.Size = UDim2.new(0, 20, 0, 20)
-        btn.Text = ""
-        btn.BackgroundColor3 = colors.Accent
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
-        
-        btn.MouseButton1Click:Connect(function()
-            Config.Theme = themeName
-            ApplyTheme(themeName)
-            SaveConfig()
+    if isFirstLoad and Config.TeleportHUD then
+        task.spawn(function()
+            task.wait(6)
+            tpButton.Visible = true
         end)
     end
 
-    -- 7. Window Control Actions
+    -- === THE MODERN SHELL ===
+    local mainFrame = Instance.new("Frame", screenGui)
+    mainFrame.Size = UDim2.new(0, 260, 0, 360)
+    
+    -- Animation Off-screen state
+    local hiddenPosition = UDim2.new(0.5, -130, 0.5, 50)
+    local visiblePosition = UDim2.new(0.5, -130, 0.5, -180)
+    
+    mainFrame.Position = hiddenPosition
+    mainFrame.BackgroundColor3 = COLOR_PRIMARY_BG
+    mainFrame.BackgroundTransparency = 1 -- Start transparent for fade
+    mainFrame.Visible = false
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+
+    -- Corners & Borders
+    local corner = Instance.new("UICorner", mainFrame)
+    corner.CornerRadius = UDim.new(0, 8)
+
+    local stroke = Instance.new("UIStroke", mainFrame)
+    stroke.Color = COLOR_BORDER
+    stroke.Thickness = 2
+    stroke.Transparency = 1 -- Start transparent
+
+    -- Header Bar
+    local header = Instance.new("Frame", mainFrame)
+    header.Size = UDim2.new(1, 0, 0, 35)
+    header.BackgroundTransparency = 1
+
+    local title = Instance.new("TextLabel", header)
+    title.Size = UDim2.new(1, -70, 1, 0)
+    title.Position = UDim2.new(0, 10, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "PETAPETA: School of Nightmares\nBY: OtherWisePop"
+    title.TextColor3 = COLOR_TEXT_LIGHT
+    title.TextTransparency = 1
+    title.Font = FONT_BOLD
+    title.TextSize = 13
+    title.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- Window Controls
+    local minBtn = Instance.new("TextButton", header)
+    minBtn.Size = UDim2.new(0, 25, 0, 25)
+    minBtn.Position = UDim2.new(1, -60, 0, 5)
+    minBtn.Text = "-"
+    minBtn.TextTransparency = 1
+    minBtn.BackgroundTransparency = 1
+    minBtn.BackgroundColor3 = COLOR_SECONDARY_BG
+    minBtn.TextColor3 = COLOR_TEXT_LIGHT
+    Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0, 4)
+
+    local closeBtn = Instance.new("TextButton", header)
+    closeBtn.Size = UDim2.new(0, 25, 0, 25)
+    closeBtn.Position = UDim2.new(1, -30, 0, 5)
+    closeBtn.Text = "X"
+    closeBtn.TextTransparency = 1
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.BackgroundColor3 = COLOR_SECONDARY_BG
+    closeBtn.TextColor3 = COLOR_ACCENT_RED
+    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 4)
+
+    -- === ANIMATION LOGIC ===
+    -- Helper to tween transparency of frame and its immediate styling descendants
+    local function FadeShell(targetTransparency)
+        local tInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        TweenService:Create(mainFrame, tInfo, {BackgroundTransparency = targetTransparency}):Play()
+        TweenService:Create(stroke, tInfo, {Transparency = targetTransparency}):Play()
+        TweenService:Create(title, tInfo, {TextTransparency = targetTransparency}):Play()
+        TweenService:Create(minBtn, tInfo, {BackgroundTransparency = targetTransparency, TextTransparency = targetTransparency}):Play()
+        TweenService:Create(closeBtn, tInfo, {BackgroundTransparency = targetTransparency, TextTransparency = targetTransparency}):Play()
+    end
+
+    local function OpenWindow()
+        mainFrame.Visible = true
+        mainFrame.Position = hiddenPosition
+        FadeShell(0)
+        TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = visiblePosition}):Play()
+    end
+
+    local function CloseWindow(isDestroy)
+        FadeShell(1)
+        local slide = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Position = hiddenPosition})
+        slide:Play()
+        slide.Completed:Connect(function()
+            if not Config.GuiVisible then
+                mainFrame.Visible = false
+                if isDestroy then screenGui:Destroy() end
+            end
+        end)
+    end
+
+    -- Input Handling
     toggleButton.MouseButton1Click:Connect(function()
         Config.GuiVisible = not Config.GuiVisible
-        if Config.GuiVisible then
-            mainFrame.Size = UDim2.new(0, 260, 0, 0)
-            mainFrame.Visible = true
-            Tween(mainFrame, {Size = UDim2.new(0, 260, 0, 420)}, 0.3)
-        else
-            Tween(mainFrame, {Size = UDim2.new(0, 260, 0, 0)}, 0.3).Completed:Connect(function()
-                mainFrame.Visible = false
-            end)
-        end
+        if Config.GuiVisible then OpenWindow() else CloseWindow(false) end
+        SaveConfig()
+    end)
+
+    minBtn.MouseButton1Click:Connect(function()
+        Config.GuiVisible = false
+        CloseWindow(false)
         SaveConfig()
     end)
 
     closeBtn.MouseButton1Click:Connect(function()
         Config.GuiVisible = false
-        Tween(mainFrame, {Size = UDim2.new(0, 260, 0, 0)}, 0.3).Completed:Connect(function()
-            mainFrame.Visible = false
-        end)
+        CloseWindow(true) -- Triggers Watchdog to invisibly rebuild
         SaveConfig()
     end)
 
-    minBtn.MouseButton1Click:Connect(function()
-        isMinimized = not isMinimized
-        if isMinimized then
-            Tween(mainFrame, {Size = UDim2.new(0, 260, 0, 40)}, 0.3)
+    -- [INTENTIONALLY LEFT EMPTY: No FeatureList buttons spawned here yet]
+
+    -- Teleport HUD Button Actions
+    tpButton.MouseButton1Click:Connect(function()
+        if tick() < Engine.TPCooldownEnd or tick() < Engine.TPWarningEnd then return end
+        if isPlayerHoldingAnyKey() then
+            Engine.TPWarningText, Engine.TPWarningEnd = "❌ Clear Hands!", tick() + 1.5
+            return
+        end
+
+        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if not root then Engine.TPWarningText, Engine.TPWarningEnd = "❌ Not Ready", tick() + 1.5; return end
+
+        local closestKey, closestPos, minDistance = nil, nil, math.huge
+        for _, obj in ipairs(GetDictKeys(Engine.Cache.Keys)) do
+            if isItemOnGround(obj) then
+                local part = obj:IsA("BasePart") and obj or obj:FindFirstChildWhichIsA("BasePart")
+                if part then
+                    local pos = part.Position
+                    if isWithinRelativeBounds(pos, root.Position) then
+                        local dist = (pos - root.Position).Magnitude
+                        if dist < minDistance then
+                            minDistance = dist
+                            closestKey = obj
+                            closestPos = pos
+                        end
+                    end
+                end
+            end
+        end
+
+        if closestKey and closestPos then
+            pcall(function() root.CFrame = CFrame.new(closestPos + Vector3.new(0, TELEPORT_VERTICAL_OFFSET, 0)) * root.CFrame.Rotation end)
+            Engine.TPCooldownEnd = tick() + TELEPORT_COOLDOWN
         else
-            Tween(mainFrame, {Size = UDim2.new(0, 260, 0, 420)}, 0.3)
+            Engine.TPWarningText, Engine.TPWarningEnd = "❌ No Keys Found", tick() + 1.5
         end
     end)
 
     activeScreenGui = screenGui
     activeTpButton = tpButton
-    
-    -- Initialize the final theme
-    ApplyTheme(Config.Theme)
 end
 
 -- ================= 10. Initialization, Failsafes & Hooks =================
 
+-- Initial Load
 if not isBuildingUI then
     isBuildingUI = true
     pcall(BuildUI)
     isBuildingUI = false
 end
 
--- Fire initial actions silently without triggering UI rebuilding
+-- Hook up initial states
 for _, feature in ipairs(FeatureList) do
     if feature.Action and (Config[feature.Key] == true or feature.Type == "Cycle") then
         feature.Action(Config[feature.Key])
     end
 end
 
--- Watchdog
+-- Debounced Watchdog & Failsafe
 local uiMissingTime = 0
 local lastBuildTime = 0
+
 task.spawn(function()
     while task.wait(1) do
         if not activeScreenGui or not activeScreenGui.Parent then
             uiMissingTime = uiMissingTime + 1
+            
             if not isBuildingUI and (tick() - lastBuildTime > 2) then
                 isBuildingUI = true
                 lastBuildTime = tick()
-                pcall(BuildUI)
+                local s, e = pcall(BuildUI)
+                if not s then warn("[OWP HUB] Rebuild Error: " .. tostring(e)) end
                 isBuildingUI = false
             end
+            
             if uiMissingTime >= 5 then
                 if Engine.NoClipConnection then 
+                    warn("[OWP HUB] UI missing for 5+ seconds! Safety fallback: Temporarily suspending NoClip physics to prevent falling.")
                     Engine.NoClipConnection:Disconnect()
                     Engine.NoClipConnection = nil 
+                    
                     if player.Character then
                         for _, p in ipairs(player.Character:GetDescendants()) do
-                            if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then pcall(function() p.CanCollide = true end) end
+                            if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then 
+                                pcall(function() p.CanCollide = true end) 
+                            end
                         end
                     end
                     uiMissingTime = -9999
@@ -789,16 +782,22 @@ task.spawn(function()
     end
 end)
 
--- TP HUD Background Updater
+-- Stabilized TP HUD Background Updater
 task.spawn(function()
     while task.wait(0.1) do
         if not Config.TeleportHUD or not activeTpButton or not activeTpButton.Parent or isBuildingUI then continue end
         
         local newState, newColor
-        if tick() < Engine.TPWarningEnd then newState, newColor = Engine.TPWarningText, STATUS_RED
-        elseif isPlayerHoldingAnyKey() then newState, newColor = "TP: Item Held", STATUS_CYAN
-        elseif tick() < Engine.TPCooldownEnd then newState, newColor = "TP Cooldown: " .. math.ceil(Engine.TPCooldownEnd - tick()) .. "s", STATUS_YELLOW
-        else newState, newColor = "Teleport To Key", STATUS_GREEN end
+        
+        if tick() < Engine.TPWarningEnd then
+            newState, newColor = Engine.TPWarningText, COLOR_ACCENT_RED
+        elseif isPlayerHoldingAnyKey() then
+            newState, newColor = "TP: Item Held", COLOR_ACCENT_CYAN
+        elseif tick() < Engine.TPCooldownEnd then
+            newState, newColor = "TP Cooldown: " .. math.ceil(Engine.TPCooldownEnd - tick()) .. "s", COLOR_ACCENT_YELLOW
+        else
+            newState, newColor = "Teleport To Key", COLOR_ACCENT_GREEN
+        end
         
         if activeTpButton.Text ~= newState then
             activeTpButton.Text = newState
@@ -807,48 +806,13 @@ task.spawn(function()
     end
 end)
 
--- TP Action Logic (Wired directly to the activeTpButton component dynamically generated by Watchdog)
+-- Teleport HUD Button Linker Fix
 task.spawn(function()
-    while task.wait(1) do
-        if activeTpButton and not getattr(activeTpButton, "_tpConnectionSet") then
-            -- Safe injection using custom property to avoid double bindings on rebuild
-            setfenv(1, setmetatable({getattr = function(obj, key) return rawget(obj, key) end}, {__index = getfenv(1)}))
-            pcall(function() rawset(activeTpButton, "_tpConnectionSet", true) end)
-            
-            activeTpButton.MouseButton1Click:Connect(function()
-                if tick() < Engine.TPCooldownEnd or tick() < Engine.TPWarningEnd then return end
-                if isPlayerHoldingAnyKey() then
-                    Engine.TPWarningText, Engine.TPWarningEnd = "❌ Clear Hands!", tick() + 1.5
-                    return
-                end
-                local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                if not root then Engine.TPWarningText, Engine.TPWarningEnd = "❌ Not Ready", tick() + 1.5; return end
-
-                local closestKey, closestPos, minDistance = nil, nil, math.huge
-                for _, obj in ipairs(GetDictKeys(Engine.Cache.Keys)) do
-                    if isItemOnGround(obj) then
-                        local part = obj:IsA("BasePart") and obj or obj:FindFirstChildWhichIsA("BasePart")
-                        if part then
-                            local pos = part.Position
-                            if isWithinRelativeBounds(pos, root.Position) then
-                                local dist = (pos - root.Position).Magnitude
-                                if dist < minDistance then
-                                    minDistance = dist
-                                    closestKey = obj
-                                    closestPos = pos
-                                end
-                            end
-                        end
-                    end
-                end
-
-                if closestKey and closestPos then
-                    pcall(function() root.CFrame = CFrame.new(closestPos + Vector3.new(0, TELEPORT_VERTICAL_OFFSET, 0)) * root.CFrame.Rotation end)
-                    Engine.TPCooldownEnd = tick() + TELEPORT_COOLDOWN
-                else
-                    Engine.TPWarningText, Engine.TPWarningEnd = "❌ No Keys Found", tick() + 1.5
-                end
-            end)
+    while task.wait(0.5) do
+        if activeTpButton and activeTpButton.Parent then
+            if _G.OWP_Loader_Played then
+                activeTpButton.Visible = Config.TeleportHUD
+            end
         end
     end
 end)
@@ -859,12 +823,16 @@ player.CharacterAdded:Connect(function(newCharacter)
     Engine.TPCooldownEnd, Engine.TPWarningEnd = 0, 0
     
     local hum = newCharacter:WaitForChild("Humanoid", 5)
+    
     for _, feature in ipairs(FeatureList) do
         if feature.OnCharacterAdded then
             feature.OnCharacterAdded(newCharacter, hum)
-            if feature._updateVisuals then feature._updateVisuals() end
+            -- Note: UI buttons aren't spawned yet in 4.1, so we bypass _updateVisuals
+            if feature._updateVisuals and activeScreenGui then 
+                pcall(feature._updateVisuals) 
+            end
         end
     end
 end)
 
-print("✅ PETAPETA: School of Nightmares V15.0 (Phase 4: Premium UI & Theme Engine) - Loaded")
+print("✅ PETAPETA: School of Nightmares V14.6 (Phase 4.1: The Shell) - Loaded")
