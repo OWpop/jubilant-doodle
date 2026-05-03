@@ -14,7 +14,7 @@ local isUnloaded = false
 local scriptConnections = {}
 
 --[[
-    PETAPETA: School of Nightmares V15.5 (Phase 4: Layout Polish & Drag Memory)
+    PETAPETA: School of Nightmares V15.6 (Glassmorphism Button Redesign)
     By: OtherWisePop
     USE RESPONSIBLY AND AT YOUR OWN RISK.
 --]]
@@ -34,7 +34,7 @@ if not player then
 end
 local playerGui = player:WaitForChild("PlayerGui")
 
-local GUI_NAME = "OWP_PetaHub_V15_5_" .. tostring(math.random(10000, 99999))
+local GUI_NAME = "OWP_PetaHub_V15_6_" .. tostring(math.random(10000, 99999))
 local CONFIG_FILE_NAME = "OWP_PetaHub_Config.json"
 
 local FONT = Enum.Font.SourceSans
@@ -549,56 +549,59 @@ local function BuildUI()
     screenGui.Name = GUI_NAME
     screenGui.ResetOnSpawn = false
 
-    -- [FIXED] Toggle Button Redesign
+    -- [FIXED] Toggle Button Glassmorphism Redesign
     local toggleButton = Instance.new("TextButton", screenGui)
     toggleButton.Size = TOGGLE_BUTTON_SIZE
     toggleButton.Position = TOGGLE_BUTTON_POS
     toggleButton.Text = "OWP HUB"
-    toggleButton.BackgroundColor3 = C_BG_ROW
+    toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    toggleButton.BackgroundTransparency = 0.3
     toggleButton.TextColor3 = C_TEXT_WHITE
     toggleButton.Font = FONT_BOLD
     toggleButton.TextScaled = true
+    toggleButton.TextXAlignment = Enum.TextXAlignment.Center
     toggleButton.Draggable = true
-    Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIStroke", toggleButton).Color = C_BORDER
-    
-    local toggleAccent = Instance.new("Frame", toggleButton)
-    toggleAccent.Size = UDim2.new(0, 3, 1, -14)
-    toggleAccent.Position = UDim2.new(0, 6, 0.5, 0)
-    toggleAccent.AnchorPoint = Vector2.new(0, 0.5)
-    toggleAccent.BackgroundColor3 = C_ACCENT_RED
-    toggleAccent.BorderSizePixel = 0
-    Instance.new("UICorner", toggleAccent).CornerRadius = UDim.new(1, 0)
-    
-    local togglePadding = Instance.new("UIPadding", toggleButton)
-    togglePadding.PaddingLeft = UDim.new(0, 8)
-    togglePadding.PaddingRight = UDim.new(0, 2)
+    toggleButton.ClipsDescendants = true
 
-    -- [FIXED] Teleport HUD Button Redesign
+    -- Glass edge stroke
+    local glassStroke = Instance.new("UIStroke", toggleButton)
+    glassStroke.Color = Color3.fromRGB(80, 80, 80)
+    glassStroke.Transparency = 0.5
+    glassStroke.Thickness = 1.5
+
+    -- Rounded corners
+    Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0, 12)
+
+    -- Thin red accent at bottom
+    local bottomAccent = Instance.new("Frame", toggleButton)
+    bottomAccent.Size = UDim2.new(1, 0, 0, 2)
+    bottomAccent.Position = UDim2.new(0, 0, 1, 0)
+    bottomAccent.AnchorPoint = Vector2.new(0, 1)
+    bottomAccent.BackgroundColor3 = C_ACCENT_RED
+    bottomAccent.BackgroundTransparency = 0.3
+    bottomAccent.BorderSizePixel = 0
+
+    -- [FIXED] Teleport HUD Button Glassmorphism Redesign
     local tpButton = Instance.new("TextButton", screenGui)
     tpButton.Size = UDim2.new(0, 130, 0, 32)
     tpButton.Position = UDim2.new(0, 10, 0, 48) 
-    tpButton.BackgroundColor3 = C_BG_ROW
+    tpButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    tpButton.BackgroundTransparency = 0.3
     tpButton.TextColor3 = C_ACCENT_GREEN
     tpButton.Font = FONT_BOLD
     tpButton.TextScaled = true
     tpButton.Text = "Teleport To Key"
     tpButton.Visible = Config.TeleportHUD
     tpButton.Draggable = true
-    Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIStroke", tpButton).Color = C_BORDER
+    tpButton.TextXAlignment = Enum.TextXAlignment.Center
+    tpButton.ClipsDescendants = true
 
-    local tpAccent = Instance.new("Frame", tpButton)
-    tpAccent.Size = UDim2.new(0, 3, 1, -14)
-    tpAccent.Position = UDim2.new(0, 6, 0.5, 0)
-    tpAccent.AnchorPoint = Vector2.new(0, 0.5)
-    tpAccent.BackgroundColor3 = C_ACCENT_GREEN
-    tpAccent.BorderSizePixel = 0
-    Instance.new("UICorner", tpAccent).CornerRadius = UDim.new(1, 0)
+    local tpGlassStroke = Instance.new("UIStroke", tpButton)
+    tpGlassStroke.Color = Color3.fromRGB(80, 80, 80)
+    tpGlassStroke.Transparency = 0.5
+    tpGlassStroke.Thickness = 1.5
 
-    local tpPadding = Instance.new("UIPadding", tpButton)
-    tpPadding.PaddingLeft = UDim.new(0, 8)
-    tpPadding.PaddingRight = UDim.new(0, 2)
+    Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 12)
 
     -- Main Hub Frame
     local mainFrame = Instance.new("Frame", screenGui)
@@ -635,7 +638,6 @@ local function BuildUI()
         if dragStart and dragInput and Config.GuiVisible then
             local delta = dragInput.Position - dragStart
             mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-            -- Update the cached position as user drags it!
             Engine.SavedMenuPosition = mainFrame.Position
         end
     end))
@@ -862,7 +864,7 @@ local function BuildUI()
     activeScreenGui = screenGui
     activeMainFrame = mainFrame
     _G.OWP_TP_Button = tpButton
-    _G.OWP_TP_Accent = tpAccent
+    -- _G.OWP_TP_Accent removed, no longer needed
 end
 
 -- ================= 10. Initialization, Failsafes & Hooks =================
@@ -924,7 +926,6 @@ task.spawn(function()
         if _G.OWP_TP_Button.Text ~= newState then
             _G.OWP_TP_Button.Text = newState
             _G.OWP_TP_Button.TextColor3 = newColor
-            if _G.OWP_TP_Accent then _G.OWP_TP_Accent.BackgroundColor3 = newColor end
         end
     end
 end)
@@ -981,4 +982,4 @@ _G.OWP_PetaHub_Unload = function()
     end
 end
 
-print("✅ PETAPETA: School of Nightmares V15.5 (Phase 4: Drag Memory & Layout Polish) - Loaded")
+print("✅ PETAPETA: School of Nightmares V15.6 (Glassmorphism Buttons) - Loaded")
