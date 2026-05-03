@@ -14,7 +14,7 @@ local isUnloaded = false
 local scriptConnections = {}
 
 --[[
-    PETAPETA: School of Nightmares V15.4 (Phase 4: Visual Polish & Layout Fixes)
+    PETAPETA: School of Nightmares V15.5 (Phase 4: Layout Polish & Drag Memory)
     By: OtherWisePop
     USE RESPONSIBLY AND AT YOUR OWN RISK.
 --]]
@@ -34,7 +34,7 @@ if not player then
 end
 local playerGui = player:WaitForChild("PlayerGui")
 
-local GUI_NAME = "OWP_PetaHub_V15_4_" .. tostring(math.random(10000, 99999))
+local GUI_NAME = "OWP_PetaHub_V15_5_" .. tostring(math.random(10000, 99999))
 local CONFIG_FILE_NAME = "OWP_PetaHub_Config.json"
 
 local FONT = Enum.Font.SourceSans
@@ -61,15 +61,14 @@ local C_TOGGLE_OFF_BG = Color3.fromRGB(40, 40, 40)
 local C_TOGGLE_OFF_PILL = Color3.fromRGB(80, 80, 80)
 
 -- Sizes and Positions 
-local TOGGLE_BUTTON_SIZE = UDim2.new(0, 90, 0, 32)
+local TOGGLE_BUTTON_SIZE = UDim2.new(0, 100, 0, 32)
 local TOGGLE_BUTTON_POS = UDim2.new(0, 10, 0, 10) 
 
 local MENU_WIDTH = 320
 local MENU_HEIGHT_OPEN = 360
 local MENU_HEIGHT_MINIMIZED = 35
 
--- Forces the UI closed and off the left edge
-local MAIN_FRAME_POS_CLOSED = UDim2.new(0, -MENU_WIDTH - 30, 0.1, 0)
+local MAIN_FRAME_POS_CENTER = UDim2.new(0.5, -MENU_WIDTH / 2, 0.1, 0) 
 
 local ANIM_TWEEN_INFO = TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 local TOGGLE_TWEEN_INFO = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -109,7 +108,8 @@ local Engine = {
     NoClipConnection = nil, FullBrightConnection = nil, AntiVoidConnection = nil, AntiFreezeConnection = nil,
     SpeedEnforceRunning = false, SpeedEnforceCancelTime = 0, HiddenFires = {}, 
     TPCooldownEnd = 0, TPWarningEnd = 0, TPWarningText = "",
-    MenuMinimized = false
+    MenuMinimized = false,
+    SavedMenuPosition = MAIN_FRAME_POS_CENTER -- [FIXED] Cache to remember where the user dragged it
 }
 
 local initialLighting = {
@@ -549,7 +549,7 @@ local function BuildUI()
     screenGui.Name = GUI_NAME
     screenGui.ResetOnSpawn = false
 
-    -- [FIXED] Toggle Button with Red Accent Bar
+    -- [FIXED] Toggle Button Redesign
     local toggleButton = Instance.new("TextButton", screenGui)
     toggleButton.Size = TOGGLE_BUTTON_SIZE
     toggleButton.Position = TOGGLE_BUTTON_POS
@@ -571,9 +571,10 @@ local function BuildUI()
     Instance.new("UICorner", toggleAccent).CornerRadius = UDim.new(1, 0)
     
     local togglePadding = Instance.new("UIPadding", toggleButton)
-    togglePadding.PaddingLeft = UDim.new(0, 6)
+    togglePadding.PaddingLeft = UDim.new(0, 8)
+    togglePadding.PaddingRight = UDim.new(0, 2)
 
-    -- [FIXED] Teleport HUD Button with Dynamic Accent Bar
+    -- [FIXED] Teleport HUD Button Redesign
     local tpButton = Instance.new("TextButton", screenGui)
     tpButton.Size = UDim2.new(0, 130, 0, 32)
     tpButton.Position = UDim2.new(0, 10, 0, 48) 
@@ -596,12 +597,14 @@ local function BuildUI()
     Instance.new("UICorner", tpAccent).CornerRadius = UDim.new(1, 0)
 
     local tpPadding = Instance.new("UIPadding", tpButton)
-    tpPadding.PaddingLeft = UDim.new(0, 6)
+    tpPadding.PaddingLeft = UDim.new(0, 8)
+    tpPadding.PaddingRight = UDim.new(0, 2)
 
     -- Main Hub Frame
     local mainFrame = Instance.new("Frame", screenGui)
     mainFrame.Size = UDim2.new(0, MENU_WIDTH, 0, MENU_HEIGHT_OPEN)
-    mainFrame.Position = MAIN_FRAME_POS_CLOSED
+    -- Calculate off-screen position dynamically 
+    mainFrame.Position = UDim2.new(0, -MENU_WIDTH - 30, Engine.SavedMenuPosition.Y.Scale, Engine.SavedMenuPosition.Y.Offset)
     mainFrame.BackgroundColor3 = C_BG_MAIN
     mainFrame.BorderSizePixel = 0
     mainFrame.ClipsDescendants = true
@@ -632,6 +635,8 @@ local function BuildUI()
         if dragStart and dragInput and Config.GuiVisible then
             local delta = dragInput.Position - dragStart
             mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            -- Update the cached position as user drags it!
+            Engine.SavedMenuPosition = mainFrame.Position
         end
     end))
 
@@ -659,7 +664,7 @@ local function BuildUI()
     authorText.TextSize = 10
     authorText.TextXAlignment = Enum.TextXAlignment.Left
 
-    --[FIXED] Controls fixed firmly to the right side
+    -- Controls fixed firmly to the right side
     local controlsFrame = Instance.new("Frame", titleBar)
     controlsFrame.Size = UDim2.new(0, 60, 1, 0)
     controlsFrame.Position = UDim2.new(1, 0, 0, 0)
@@ -801,16 +806,16 @@ local function BuildUI()
         CreateButton(feature, order)
     end
 
-    -- [FIXED] Robust Menu Animations (Slides perfectly to left edge while keeping Y)
+    -- [FIXED] Drag Memory Logic: Slides horizontally based on your saved Y height
     local function ToggleMenu()
         Config.GuiVisible = not Config.GuiVisible
-        local currentYScale = mainFrame.Position.Y.Scale
-        local currentYOffset = mainFrame.Position.Y.Offset
-        
-        local targetX = Config.GuiVisible and 20 or (-MENU_WIDTH - 30)
-        local targetPos = UDim2.new(0, targetX, currentYScale, currentYOffset)
-        
-        TweenService:Create(mainFrame, ANIM_TWEEN_INFO, {Position = targetPos}):Play()
+        if Config.GuiVisible then
+            TweenService:Create(mainFrame, ANIM_TWEEN_INFO, {Position = Engine.SavedMenuPosition}):Play()
+        else
+            Engine.SavedMenuPosition = mainFrame.Position 
+            local offscreenPos = UDim2.new(0, -MENU_WIDTH - 30, Engine.SavedMenuPosition.Y.Scale, Engine.SavedMenuPosition.Y.Offset)
+            TweenService:Create(mainFrame, ANIM_TWEEN_INFO, {Position = offscreenPos}):Play()
+        end
         SaveConfig()
     end
 
@@ -901,7 +906,7 @@ task.spawn(function()
     end
 end)
 
--- TP HUD Loop (Syncs text color with the new left Accent Line)
+-- TP HUD Text Updater Loop
 task.spawn(function()
     while task.wait(0.1) do
         if isUnloaded then break end
@@ -957,6 +962,8 @@ _G.OWP_PetaHub_Unload = function()
     
     if Engine.NoClipConnection then Engine.NoClipConnection:Disconnect() end
     if Engine.FullBrightConnection then Engine.FullBrightConnection:Disconnect() end
+    if Engine.AntiVoidConnection then Engine.AntiVoidConnection:Disconnect() end
+    if Engine.AntiFreezeConnection then Engine.AntiFreezeConnection:Disconnect() end
     
     restoreLighting()
     
@@ -974,4 +981,4 @@ _G.OWP_PetaHub_Unload = function()
     end
 end
 
-print("✅ PETAPETA: School of Nightmares V15.4 (Phase 4: Visual Polish) - Loaded")
+print("✅ PETAPETA: School of Nightmares V15.5 (Phase 4: Drag Memory & Layout Polish) - Loaded")
