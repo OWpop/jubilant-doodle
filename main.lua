@@ -3,6 +3,7 @@ local SCRIPT_URL = "https://raw.githubusercontent.com/OWpop/jubilant-doodle/main
 if queue_on_teleport then
     queue_on_teleport('loadstring(game:HttpGet("' .. SCRIPT_URL .. '?t="..tostring(tick())))()')
 end
+
 -- Graceful Hot-Reloading: If the script is already running, safely kill it before starting fresh.
 if _G.OWP_Hub_Running and _G.OWP_PetaHub_Unload then
     pcall(_G.OWP_PetaHub_Unload)
@@ -12,7 +13,7 @@ local isUnloaded = false
 local scriptConnections = {}
 
 --[[
-    PETAPETA: School of Nightmares V15.9 (Whitespace Sanitized – Final Fix)
+    PETAPETA: School of Nightmares V15.11 (Manually Sanitized & Architecturally Verified)
     By: OtherWisePop
     USE RESPONSIBLY AND AT YOUR OWN RISK.
 --]]
@@ -32,7 +33,7 @@ if not player then
 end
 local playerGui = player:WaitForChild("PlayerGui")
 
-local GUI_NAME = "OWP_PetaHub_V15_9_" .. tostring(math.random(10000, 99999))
+local GUI_NAME = "OWP_PetaHub_V15_11_" .. tostring(math.random(10000, 99999))
 local CONFIG_FILE_NAME = "OWP_PetaHub_Config.json"
 local FONT = Enum.Font.SourceSans
 local FONT_BOLD = Enum.Font.SourceSansBold
@@ -66,7 +67,7 @@ local TOGGLE_TWEEN_INFO = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.Easing
 
 -- Configuration Constants
 local WALK_SPEEDS = {16, 20, 30, 40, 50}
-local IMPORTANT_ITEM_NAMES = { "key", "key_neon", "key_ver2" }
+local IMPORTANT_ITEM_NAMES = {"key", "key_neon", "key_ver2"}
 local MAX_ESP_DISTANCE = 400
 local TELEPORT_COOLDOWN = 10
 local TELEPORT_VERTICAL_OFFSET = 3.5
@@ -94,7 +95,7 @@ local Config = {
 }
 
 local Engine = {
-    Cache = { Keys = {}, Fires = {}, Prompts = {} },
+    Cache = {Keys = {}, Fires = {}, Prompts = {}},
     ESPBeams = {}, ESPAttachments = {}, ESPConnections = {}, ESPUpdateRunning = false,
     NoClipConnection = nil, FullBrightConnection = nil, AntiVoidConnection = nil, AntiFreezeConnection = nil,
     SpeedEnforceRunning = false, SpeedEnforceCancelTime = 0, HiddenFires = {},
@@ -325,7 +326,6 @@ local function updateEspBeamsThrottled()
     while Config.ESP do
         task.wait(ESP_UPDATE_INTERVAL)
         if isUnloaded then break end
-        
         pcall(function()
             local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
             if not root or not root.Parent then return end
@@ -413,18 +413,21 @@ task.spawn(function()
     end
 end)
 
--- ================= 8. Feature Registration List (V15.7 Reorder & Rename) =================
+-- ================= 8. Feature Registration List (Data-Driven Sections) =================
 local FeatureList = {
-    {Name = "Speed", Key = "SpeedIndex", Type = "Cycle", CycleOptions = WALK_SPEEDS, Action = function(val)
+    {Name = "Speed", Key = "SpeedIndex", Type = "Cycle", CycleOptions = WALK_SPEEDS, Section = "All Mode",
+    Action = function(val)
         Engine.SpeedEnforceCancelTime = tick() + ENFORCE_SPEED_DURATION
         Engine.SpeedEnforceRunning = true
-    end, OnCharacterAdded = function(char, hum)
+    end,
+    OnCharacterAdded = function(char, hum)
         if hum then hum.WalkSpeed = WALK_SPEEDS[Config.SpeedIndex] end
         Engine.SpeedEnforceCancelTime = tick() + ENFORCE_SPEED_DURATION
         Engine.SpeedEnforceRunning = true
     end},
-    
-    {Name = "NoClip", Key = "NoClip", Type = "Toggle", Action = function(val)
+
+    {Name = "NoClip", Key = "NoClip", Type = "Toggle", Section = "All Mode",
+    Action = function(val)
         if val then
             if not Engine.NoClipConnection then
                 Engine.NoClipConnection = RunService.Stepped:Connect(function()
@@ -443,14 +446,12 @@ local FeatureList = {
                 end
             end
         end
-    end, OnCharacterAdded = function(char, hum)
-        if Engine.NoClipConnection then 
-            Engine.NoClipConnection:Disconnect() 
-            Engine.NoClipConnection = nil 
-        end
+    end,
+    OnCharacterAdded = function(char, hum)
+        if Engine.NoClipConnection then Engine.NoClipConnection:Disconnect(); Engine.NoClipConnection = nil end
         if Config.NoClip then
             task.spawn(function()
-                task.wait(0.5) 
+                task.wait(0.5)
                 if Config.NoClip and not Engine.NoClipConnection then
                     Engine.NoClipConnection = RunService.Stepped:Connect(function()
                         if player.Character then
@@ -463,8 +464,9 @@ local FeatureList = {
             end)
         end
     end},
-    
-    {Name = "Full Bright", Key = "FullBright", Type = "Toggle", Action = function(val)
+
+    {Name = "Full Bright", Key = "FullBright", Type = "Toggle", Section = "All Mode",
+    Action = function(val)
         if val then
             Engine.FullBrightConnection = RunService.RenderStepped:Connect(function()
                 Lighting.Ambient = Color3.fromRGB(255, 255, 255)
@@ -479,16 +481,19 @@ local FeatureList = {
         end
         if Config.ESP then updateEspVisuals() end
     end},
-    
-    {Name = "ESP", Key = "ESP", Type = "Toggle", Action = function(val)
+
+    {Name = "ESP", Key = "ESP", Type = "Toggle", Section = "All Mode",
+    Action = function(val)
         if val then if not Engine.ESPUpdateRunning then task.spawn(updateEspBeamsThrottled) end else cleanupAllEsp() end
     end},
-    
-    {Name = "ESP Distance", Key = "ESPDistance", Type = "Toggle", Action = function(val)
+
+    {Name = "ESP Distance", Key = "ESPDistance", Type = "Toggle", Section = "All Mode",
+    Action = function(val)
         if Config.ESP and not Engine.ESPUpdateRunning then task.spawn(updateEspBeamsThrottled) end
     end},
-    
-    {Name = "Anti-Void", Key = "AntiVoid", Type = "Toggle", Action = function(val)
+
+    {Name = "Anti-Void", Key = "AntiVoid", Type = "Toggle", Section = "All Mode",
+    Action = function(val)
         if Engine.AntiVoidConnection then Engine.AntiVoidConnection:Disconnect(); Engine.AntiVoidConnection = nil end
         if val then
             Engine.AntiVoidConnection = RunService.Heartbeat:Connect(function()
@@ -499,18 +504,20 @@ local FeatureList = {
             end)
         end
     end},
-    
-    {Name = "Teleport HUD", Key = "TeleportHUD", Type = "Toggle", Action = function(val) 
+
+    {Name = "Teleport HUD", Key = "TeleportHUD", Type = "Toggle", Section = "All Mode",
+    Action = function(val) 
         if _G.OWP_TP_Button then _G.OWP_TP_Button.Visible = val end 
     end},
-    
-    {Name = "Speed Lock", Key = "SpeedLock", Type = "Toggle", Action = nil},
-    
-    {Name = "Search Locker", Key = "SearchAura", Type = "Toggle", Action = nil},
-    
-    {Name = "Anti-Freeze", Key = "AntiFreeze", Type = "Toggle", Action = nil},
-    
-    {Name = "Bypass Fire", Key = "BypassFire", Type = "Toggle", Action = function(val)
+
+    {Name = "Speed Lock", Key = "SpeedLock", Type = "Toggle", Section = "All Mode", Action = nil},
+
+    {Name = "Search Locker", Key = "SearchAura", Type = "Toggle", Section = "All Mode", Action = nil},
+
+    {Name = "Anti-Freeze", Key = "AntiFreeze", Type = "Toggle", Section = "All Mode", Action = nil},
+
+    {Name = "Bypass Fire", Key = "BypassFire", Type = "Toggle", Section = "Super Hard Mode",
+    Action = function(val)
         if not val then
             for obj, data in pairs(Engine.HiddenFires) do
                 if obj then pcall(function() obj.Parent = data.Parent end) end
@@ -520,7 +527,7 @@ local FeatureList = {
     end}
 }
 
--- ================= 9. UI Generation (Glassmorphism Buttons) =================
+-- ================= 9. UI Generation (Glassmorphism + Dynamic Sections) =================
 local activeScreenGui = nil
 local activeMainFrame = nil
 local isBuildingUI = false
@@ -535,7 +542,7 @@ local function BuildUI()
     screenGui.Name = GUI_NAME
     screenGui.ResetOnSpawn = false
 
-    -- Toggle Button Glassmorphism Redesign
+    -- Toggle Button Glassmorphism
     local toggleButton = Instance.new("TextButton", screenGui)
     toggleButton.Size = TOGGLE_BUTTON_SIZE
     toggleButton.Position = TOGGLE_BUTTON_POS
@@ -564,7 +571,7 @@ local function BuildUI()
     bottomAccent.BackgroundTransparency = 0.3
     bottomAccent.BorderSizePixel = 0
 
-    -- Teleport HUD Button Glassmorphism Redesign
+    -- Teleport HUD Button Glassmorphism
     local tpButton = Instance.new("TextButton", screenGui)
     tpButton.Size = UDim2.new(0, 130, 0, 32)
     tpButton.Position = UDim2.new(0, 10, 0, 48) 
@@ -619,13 +626,12 @@ local function BuildUI()
     table.insert(scriptConnections, RunService.Heartbeat:Connect(function()
         if dragStart and dragInput and Config.GuiVisible then
             local delta = dragInput.Position - dragStart
-            mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) 
+            mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)  
             Engine.SavedMenuPosition = mainFrame.Position
         end
     end))
 
-    local titleCorner = Instance.new("UICorner", titleBar)
-    titleCorner.CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 8)
 
     local titleText = Instance.new("TextLabel", titleBar)
     titleText.Size = UDim2.new(0, 185, 1, 0)
@@ -697,6 +703,34 @@ local function BuildUI()
     Instance.new("UIPadding", scrollFrame).PaddingTop = UDim.new(0, 8)
     Instance.new("UIPadding", scrollFrame).PaddingBottom = UDim.new(0, 8)
 
+    -- Helper: Create Section Header
+    local function CreateSectionHeader(sectionName, layoutOrder)
+        local container = Instance.new("Frame", scrollFrame)
+        container.Size = UDim2.new(1, -20, 0, 28)
+        container.LayoutOrder = layoutOrder
+        container.BackgroundTransparency = 1
+        container.BorderSizePixel = 0
+
+        local label = Instance.new("TextLabel", container)
+        label.Size = UDim2.new(1, -12, 1, 0)
+        label.Position = UDim2.new(0, 12, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = sectionName
+        label.TextColor3 = C_TEXT_DIM
+        label.Font = FONT_SEMIBOLD
+        label.TextSize = 11
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.TextYAlignment = Enum.TextYAlignment.Bottom
+
+        local divider = Instance.new("Frame", container)
+        divider.Size = UDim2.new(1, -24, 0, 1)
+        divider.Position = UDim2.new(0, 12, 1, -2)
+        divider.BackgroundColor3 = C_BORDER
+        divider.BackgroundTransparency = 0.5
+        divider.BorderSizePixel = 0
+    end
+
+    -- Helper: Create Feature Button
     local function CreateButton(feature, order)
         local row = Instance.new("TextButton", scrollFrame)
         row.Size = UDim2.new(1, -20, 0, 36)
@@ -784,8 +818,18 @@ local function BuildUI()
         updateVisuals(false)
     end
 
-    for order, feature in ipairs(FeatureList) do
-        CreateButton(feature, order)
+    -- Dynamic Header & Button Injection
+    local lastSection = nil
+    local layoutCounter = 0
+
+    for _, feature in ipairs(FeatureList) do
+        if feature.Section ~= lastSection then
+            layoutCounter = layoutCounter + 1
+            CreateSectionHeader(feature.Section, layoutCounter)
+            lastSection = feature.Section
+        end
+        layoutCounter = layoutCounter + 1
+        CreateButton(feature, layoutCounter)
     end
 
     local function ToggleMenu()
@@ -885,7 +929,6 @@ task.spawn(function()
     end
 end)
 
--- TP HUD Text Updater Loop
 task.spawn(function()
     while task.wait(0.1) do
         if isUnloaded then break end
@@ -958,4 +1001,4 @@ _G.OWP_PetaHub_Unload = function()
     end
 end
 
-print("✅ PETAPETA: School of Nightmares V15.9 (Whitespace Sanitized – Final Fix) - Loaded")
+print("✅ PETAPETA: School of Nightmares V15.11 (Manually Sanitized & Verified) - Loaded")
