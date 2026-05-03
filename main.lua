@@ -13,7 +13,7 @@ local isUnloaded = false
 local scriptConnections = {}
 
 --[[
-    PETAPETA: School of Nightmares V15.12 (Modern Section Headers - Option B)
+    PETAPETA: School of Nightmares V15.13 (Dynamic Theme Engine - Manually Sanitized)
     By: OtherWisePop
     USE RESPONSIBLY AND AT YOUR OWN RISK.
 --]]
@@ -33,29 +33,150 @@ if not player then
 end
 local playerGui = player:WaitForChild("PlayerGui")
 
-local GUI_NAME = "OWP_PetaHub_V15_12_" .. tostring(math.random(10000, 99999))
+local GUI_NAME = "OWP_PetaHub_V15_13_" .. tostring(math.random(10000, 99999))
 local CONFIG_FILE_NAME = "OWP_PetaHub_Config.json"
 local FONT = Enum.Font.SourceSans
 local FONT_BOLD = Enum.Font.SourceSansBold
 local FONT_SEMIBOLD = Enum.Font.SourceSansSemibold
 
--- Colors (Strictly Unified Scheme)
-local C_BG_MAIN = Color3.fromRGB(15, 15, 15)
-local C_BG_TITLE = Color3.fromRGB(20, 20, 20)
-local C_BG_ROW = Color3.fromRGB(25, 25, 25)
-local C_BORDER = Color3.fromRGB(50, 50, 50)
-local C_TEXT_WHITE = Color3.fromRGB(255, 255, 255)
-local C_TEXT_DIM = Color3.fromRGB(150, 150, 150)
-local C_TEXT_DARK = Color3.fromRGB(0, 0, 0)
-local C_ACCENT_GREEN = Color3.fromRGB(0, 255, 0)
-local C_ACCENT_YELLOW = Color3.fromRGB(255, 255, 0)
-local C_ACCENT_RED = Color3.fromRGB(255, 0, 0)
-local C_ACCENT_CYAN = Color3.fromRGB(0, 200, 255)
-local C_TOGGLE_ON_BG = Color3.fromRGB(60, 20, 20)
-local C_TOGGLE_OFF_BG = Color3.fromRGB(40, 40, 40)
-local C_TOGGLE_OFF_PILL = Color3.fromRGB(80, 80, 80)
+-- ================= 1.1 Theme Engine (Tokenized Colors) =================
+local Themes = {
+    Dark = {
+        BG_Main = Color3.fromRGB(15, 15, 15),
+        BG_Title = Color3.fromRGB(20, 20, 20),
+        BG_Row = Color3.fromRGB(25, 25, 25),
+        Border = Color3.fromRGB(50, 50, 50),
+        Text_Primary = Color3.fromRGB(255, 255, 255),
+        Text_Dim = Color3.fromRGB(150, 150, 150),
+        Text_Dark = Color3.fromRGB(0, 0, 0),
+        Accent = Color3.fromRGB(255, 0, 0),
+        Accent_Green = Color3.fromRGB(0, 255, 0),
+        Accent_Yellow = Color3.fromRGB(255, 255, 0),
+        Accent_Cyan = Color3.fromRGB(0, 200, 255),
+        Toggle_On_BG = Color3.fromRGB(60, 20, 20),
+        Toggle_Off_BG = Color3.fromRGB(40, 40, 40),
+        Toggle_Pill = Color3.fromRGB(80, 80, 80),
+        Stroke = Color3.fromRGB(80, 80, 80)
+    },
+    Light = {
+        BG_Main = Color3.fromRGB(240, 240, 240),
+        BG_Title = Color3.fromRGB(230, 230, 230),
+        BG_Row = Color3.fromRGB(220, 220, 220),
+        Border = Color3.fromRGB(180, 180, 180),
+        Text_Primary = Color3.fromRGB(0, 0, 0),
+        Text_Dim = Color3.fromRGB(80, 80, 80),
+        Text_Dark = Color3.fromRGB(255, 255, 255),
+        Accent = Color3.fromRGB(255, 80, 80),
+        Accent_Green = Color3.fromRGB(0, 200, 0),
+        Accent_Yellow = Color3.fromRGB(200, 200, 0),
+        Accent_Cyan = Color3.fromRGB(0, 180, 220),
+        Toggle_On_BG = Color3.fromRGB(220, 200, 200),
+        Toggle_Off_BG = Color3.fromRGB(200, 200, 200),
+        Toggle_Pill = Color3.fromRGB(160, 160, 160),
+        Stroke = Color3.fromRGB(150, 150, 150)
+    },
+    Red = {
+        BG_Main = Color3.fromRGB(30, 10, 10),
+        BG_Title = Color3.fromRGB(40, 15, 15),
+        BG_Row = Color3.fromRGB(50, 20, 20),
+        Border = Color3.fromRGB(100, 30, 30),
+        Text_Primary = Color3.fromRGB(255, 220, 220),
+        Text_Dim = Color3.fromRGB(200, 150, 150),
+        Text_Dark = Color3.fromRGB(0, 0, 0),
+        Accent = Color3.fromRGB(255, 0, 0),
+        Accent_Green = Color3.fromRGB(0, 255, 0),
+        Accent_Yellow = Color3.fromRGB(255, 255, 0),
+        Accent_Cyan = Color3.fromRGB(0, 200, 255),
+        Toggle_On_BG = Color3.fromRGB(80, 30, 30),
+        Toggle_Off_BG = Color3.fromRGB(60, 30, 30),
+        Toggle_Pill = Color3.fromRGB(120, 60, 60),
+        Stroke = Color3.fromRGB(100, 50, 50)
+    },
+    Blue = {
+        BG_Main = Color3.fromRGB(10, 10, 30),
+        BG_Title = Color3.fromRGB(15, 15, 50),
+        BG_Row = Color3.fromRGB(20, 20, 60),
+        Border = Color3.fromRGB(50, 50, 120),
+        Text_Primary = Color3.fromRGB(220, 220, 255),
+        Text_Dim = Color3.fromRGB(150, 150, 220),
+        Text_Dark = Color3.fromRGB(0, 0, 0),
+        Accent = Color3.fromRGB(80, 80, 255),
+        Accent_Green = Color3.fromRGB(0, 255, 0),
+        Accent_Yellow = Color3.fromRGB(255, 255, 0),
+        Accent_Cyan = Color3.fromRGB(0, 200, 255),
+        Toggle_On_BG = Color3.fromRGB(30, 30, 80),
+        Toggle_Off_BG = Color3.fromRGB(30, 30, 60),
+        Toggle_Pill = Color3.fromRGB(80, 80, 150),
+        Stroke = Color3.fromRGB(70, 70, 140)
+    }
+}
 
--- Sizes and Positions
+-- Active theme aliases (updated dynamically by ApplyTheme)
+local C_BG_MAIN = Themes.Dark.BG_Main
+local C_BG_TITLE = Themes.Dark.BG_Title
+local C_BG_ROW = Themes.Dark.BG_Row
+local C_BORDER = Themes.Dark.Border
+local C_TEXT_WHITE = Themes.Dark.Text_Primary
+local C_TEXT_DIM = Themes.Dark.Text_Dim
+local C_TEXT_DARK = Themes.Dark.Text_Dark
+local C_ACCENT_RED = Themes.Dark.Accent
+local C_ACCENT_GREEN = Themes.Dark.Accent_Green
+local C_ACCENT_YELLOW = Themes.Dark.Accent_Yellow
+local C_ACCENT_CYAN = Themes.Dark.Accent_Cyan
+local C_TOGGLE_ON_BG = Themes.Dark.Toggle_On_BG
+local C_TOGGLE_OFF_BG = Themes.Dark.Toggle_Off_BG
+local C_TOGGLE_OFF_PILL = Themes.Dark.Toggle_Pill
+
+-- Theme Registry for dynamic tweening
+local ThemeRegistry = {}
+
+local function ApplyTheme(themeName)
+    if not Themes[themeName] then return end
+    Config.Theme = themeName
+    local t = Themes[themeName]
+
+    -- Update aliases
+    C_BG_MAIN = t.BG_Main
+    C_BG_TITLE = t.BG_Title
+    C_BG_ROW = t.BG_Row
+    C_BORDER = t.Border
+    C_TEXT_WHITE = t.Text_Primary
+    C_TEXT_DIM = t.Text_Dim
+    C_TEXT_DARK = t.Text_Dark
+    C_ACCENT_RED = t.Accent
+    C_ACCENT_GREEN = t.Accent_Green
+    C_ACCENT_YELLOW = t.Accent_Yellow
+    C_ACCENT_CYAN = t.Accent_Cyan
+    C_TOGGLE_ON_BG = t.Toggle_On_BG
+    C_TOGGLE_OFF_BG = t.Toggle_Off_BG
+    C_TOGGLE_OFF_PILL = t.Toggle_Pill
+
+    -- Tween registered elements
+    local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    for _, entry in ipairs(ThemeRegistry) do
+        local elem = entry.Element
+        local role = entry.Role
+        local color = t[role]
+        if elem and color then
+            if elem:IsA("Frame") or elem:IsA("TextButton") then
+                TweenService:Create(elem, tweenInfo, {BackgroundColor3 = color}):Play()
+            elseif elem:IsA("TextLabel") then
+                TweenService:Create(elem, tweenInfo, {TextColor3 = color}):Play()
+            elseif elem:IsA("UIStroke") then
+                TweenService:Create(elem, tweenInfo, {Color = color}):Play()
+            end
+        end
+    end
+
+    -- Refresh dynamic UI elements (toggles, cycles)
+    for _, feature in ipairs(FeatureList) do
+        if feature._updateVisuals then feature._updateVisuals() end
+    end
+
+    SaveConfig()
+end
+
+-- ================= 1.2 Sizes, Positions & Constants =================
 local TOGGLE_BUTTON_SIZE = UDim2.new(0, 100, 0, 32)
 local TOGGLE_BUTTON_POS = UDim2.new(0, 10, 0, 10)
 local MENU_WIDTH = 320
@@ -65,7 +186,6 @@ local MAIN_FRAME_POS_CENTER = UDim2.new(0.5, -MENU_WIDTH / 2, 0.1, 0)
 local ANIM_TWEEN_INFO = TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 local TOGGLE_TWEEN_INFO = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
--- Configuration Constants
 local WALK_SPEEDS = {16, 20, 30, 40, 50}
 local IMPORTANT_ITEM_NAMES = {"key", "key_neon", "key_ver2"}
 local MAX_ESP_DISTANCE = 400
@@ -91,7 +211,8 @@ local Config = {
     SpeedLock = false,
     BypassFire = false,
     SearchAura = false,
-    AntiFreeze = false
+    AntiFreeze = false,
+    Theme = "Dark"
 }
 
 local Engine = {
@@ -123,6 +244,7 @@ local function LoadConfig()
                 for k, v in pairs(decoded) do
                     if Config[k] ~= nil and type(Config[k]) == type(v) then
                         if k == "SpeedIndex" and (v < 1 or v > #WALK_SPEEDS) then continue end
+                        if k == "Theme" and not Themes[v] then continue end
                         Config[k] = v
                     end
                 end
@@ -413,7 +535,7 @@ task.spawn(function()
     end
 end)
 
--- ================= 8. Feature Registration List (Data-Driven Sections) =================
+-- ================= 8. Feature Registration List (Data-Driven Sections + Theme) =================
 local FeatureList = {
     {Name = "Speed", Key = "SpeedIndex", Type = "Cycle", CycleOptions = WALK_SPEEDS, Section = "All Mode",
     Action = function(val)
@@ -510,6 +632,9 @@ local FeatureList = {
         if _G.OWP_TP_Button then _G.OWP_TP_Button.Visible = val end 
     end},
 
+    {Name = "Theme", Key = "Theme", Type = "Cycle", CycleOptions = {"Dark", "Light", "Red", "Blue"}, Section = "All Mode",
+    Action = function(val) ApplyTheme(val) end},
+
     {Name = "Speed Lock", Key = "SpeedLock", Type = "Toggle", Section = "All Mode", Action = nil},
 
     {Name = "Search Locker", Key = "SearchAura", Type = "Toggle", Section = "All Mode", Action = nil},
@@ -527,7 +652,7 @@ local FeatureList = {
     end}
 }
 
--- ================= 9. UI Generation (Glassmorphism + Modern Section Headers) =================
+-- ================= 9. UI Generation (Glassmorphism + Dynamic Sections + Theme Registry) =================
 local activeScreenGui = nil
 local activeMainFrame = nil
 local isBuildingUI = false
@@ -537,6 +662,9 @@ local function BuildUI()
     for _, child in ipairs(guiParent:GetChildren()) do
         if string.match(child.Name, "^OWP_PetaHub") then pcall(function() child:Destroy() end) end
     end
+
+    -- Reset theme registry
+    ThemeRegistry = {}
 
     local screenGui = Instance.new("ScreenGui", guiParent)
     screenGui.Name = GUI_NAME
@@ -555,11 +683,13 @@ local function BuildUI()
     toggleButton.TextXAlignment = Enum.TextXAlignment.Center
     toggleButton.Draggable = true
     toggleButton.ClipsDescendants = true
+    table.insert(ThemeRegistry, {Element = toggleButton, Role = "BG_Main"})
 
     local glassStroke = Instance.new("UIStroke", toggleButton)
     glassStroke.Color = Color3.fromRGB(80, 80, 80)
     glassStroke.Transparency = 0.5
     glassStroke.Thickness = 1.5
+    table.insert(ThemeRegistry, {Element = glassStroke, Role = "Stroke"})
 
     Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0, 12)
 
@@ -570,6 +700,7 @@ local function BuildUI()
     bottomAccent.BackgroundColor3 = C_ACCENT_RED
     bottomAccent.BackgroundTransparency = 0.3
     bottomAccent.BorderSizePixel = 0
+    table.insert(ThemeRegistry, {Element = bottomAccent, Role = "Accent"})
 
     -- Teleport HUD Button Glassmorphism
     local tpButton = Instance.new("TextButton", screenGui)
@@ -585,11 +716,13 @@ local function BuildUI()
     tpButton.Draggable = true
     tpButton.TextXAlignment = Enum.TextXAlignment.Center
     tpButton.ClipsDescendants = true
+    table.insert(ThemeRegistry, {Element = tpButton, Role = "BG_Main"})
 
     local tpGlassStroke = Instance.new("UIStroke", tpButton)
     tpGlassStroke.Color = Color3.fromRGB(80, 80, 80)
     tpGlassStroke.Transparency = 0.5
     tpGlassStroke.Thickness = 1.5
+    table.insert(ThemeRegistry, {Element = tpGlassStroke, Role = "Stroke"})
 
     Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 12)
 
@@ -601,13 +734,18 @@ local function BuildUI()
     mainFrame.BorderSizePixel = 0
     mainFrame.ClipsDescendants = true
     Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 8)
-    Instance.new("UIStroke", mainFrame).Color = C_BORDER
+    table.insert(ThemeRegistry, {Element = mainFrame, Role = "BG_Main"})
+
+    local mainStroke = Instance.new("UIStroke", mainFrame)
+    mainStroke.Color = C_BORDER
+    table.insert(ThemeRegistry, {Element = mainStroke, Role = "Border"})
 
     -- Title Bar
     local titleBar = Instance.new("Frame", mainFrame)
     titleBar.Size = UDim2.new(1, 0, 0, MENU_HEIGHT_MINIMIZED)
     titleBar.BackgroundColor3 = C_BG_TITLE
     titleBar.BorderSizePixel = 0
+    table.insert(ThemeRegistry, {Element = titleBar, Role = "BG_Title"})
 
     local dragInput, dragStart, startPos
     titleBar.InputBegan:Connect(function(input)
@@ -642,6 +780,7 @@ local function BuildUI()
     titleText.Font = FONT_BOLD
     titleText.TextSize = 13
     titleText.TextXAlignment = Enum.TextXAlignment.Left
+    table.insert(ThemeRegistry, {Element = titleText, Role = "Text_Primary"})
 
     local authorText = Instance.new("TextLabel", titleBar)
     authorText.Size = UDim2.new(0, 65, 1, 0)
@@ -652,6 +791,7 @@ local function BuildUI()
     authorText.Font = FONT_SEMIBOLD
     authorText.TextSize = 10
     authorText.TextXAlignment = Enum.TextXAlignment.Left
+    table.insert(ThemeRegistry, {Element = authorText, Role = "Text_Dim"})
 
     local controlsFrame = Instance.new("Frame", titleBar)
     controlsFrame.Size = UDim2.new(0, 60, 1, 0)
@@ -674,6 +814,7 @@ local function BuildUI()
     minBtn.TextColor3 = C_TEXT_DIM
     minBtn.Font = FONT_BOLD
     minBtn.TextSize = 16
+    table.insert(ThemeRegistry, {Element = minBtn, Role = "Text_Dim"})
 
     local closeBtn = Instance.new("TextButton", controlsFrame)
     closeBtn.LayoutOrder = 2
@@ -683,6 +824,7 @@ local function BuildUI()
     closeBtn.TextColor3 = C_TEXT_DIM
     closeBtn.Font = FONT_BOLD
     closeBtn.TextSize = 14
+    table.insert(ThemeRegistry, {Element = closeBtn, Role = "Text_Dim"})
 
     Instance.new("UIPadding", controlsFrame).PaddingRight = UDim.new(0, 5)
 
@@ -703,7 +845,7 @@ local function BuildUI()
     Instance.new("UIPadding", scrollFrame).PaddingTop = UDim.new(0, 8)
     Instance.new("UIPadding", scrollFrame).PaddingBottom = UDim.new(0, 8)
 
-    -- Helper: Create Section Header (Option B: Modern High-Contrast)
+    -- Helper: Create Section Header
     local function CreateSectionHeader(sectionName, layoutOrder)
         local container = Instance.new("Frame", scrollFrame)
         container.Size = UDim2.new(1, -20, 0, 34)
@@ -718,6 +860,7 @@ local function BuildUI()
         accentBar.BackgroundColor3 = C_ACCENT_RED
         accentBar.BorderSizePixel = 0
         Instance.new("UICorner", accentBar).CornerRadius = UDim.new(1, 0)
+        table.insert(ThemeRegistry, {Element = accentBar, Role = "Accent"})
 
         local label = Instance.new("TextLabel", container)
         label.Size = UDim2.new(1, -30, 1, 0)
@@ -729,6 +872,7 @@ local function BuildUI()
         label.TextSize = 16
         label.TextXAlignment = Enum.TextXAlignment.Left
         label.TextYAlignment = Enum.TextYAlignment.Center
+        table.insert(ThemeRegistry, {Element = label, Role = "Text_Primary"})
 
         local divider = Instance.new("Frame", container)
         divider.Size = UDim2.new(1, -24, 0, 1)
@@ -736,6 +880,7 @@ local function BuildUI()
         divider.BackgroundColor3 = C_BORDER
         divider.BackgroundTransparency = 0.3
         divider.BorderSizePixel = 0
+        table.insert(ThemeRegistry, {Element = divider, Role = "Border"})
     end
 
     -- Helper: Create Feature Button
@@ -747,6 +892,7 @@ local function BuildUI()
         row.Text = ""
         row.AutoButtonColor = false
         Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
+        table.insert(ThemeRegistry, {Element = row, Role = "BG_Row"})
 
         local title = Instance.new("TextLabel", row)
         title.Size = UDim2.new(0.6, 0, 1, 0)
@@ -757,6 +903,7 @@ local function BuildUI()
         title.Font = FONT_SEMIBOLD
         title.TextSize = 16
         title.TextXAlignment = Enum.TextXAlignment.Left
+        table.insert(ThemeRegistry, {Element = title, Role = "Text_Primary"})
 
         local indicatorBG = Instance.new("Frame", row)
         indicatorBG.AnchorPoint = Vector2.new(1, 0.5)
@@ -904,6 +1051,11 @@ if not isBuildingUI then
     isBuildingUI = false
 end
 
+-- Apply saved theme after UI is built
+if Config.Theme and Themes[Config.Theme] then
+    ApplyTheme(Config.Theme)
+end
+
 local uiMissingTime = 0
 local lastBuildTime = 0
 task.spawn(function()
@@ -1009,4 +1161,4 @@ _G.OWP_PetaHub_Unload = function()
     end
 end
 
-print("✅ PETAPETA: School of Nightmares V15.12 (Modern Section Headers - Option B) - Loaded")
+print("✅ PETAPETA: School of Nightmares V15.13 (Dynamic Theme Engine - Manually Sanitized) - Loaded")
