@@ -252,6 +252,20 @@ function InventoryTracker.new(player, onStateChanged)
         _onStateChanged = onStateChanged or function() end,
         _connections = ConnectionManager.new("InventoryTracker")
     }, InventoryTracker)
+-- 1C. InventoryTracker — Event-driven with graceful fallback
+local InventoryTracker = {}
+InventoryTracker.__index = InventoryTracker
+
+local INV_KEY_NAMES = {"key", "key_neon", "key_ver2"}
+
+function InventoryTracker.new(player, onStateChanged)
+    local self = setmetatable({
+        _player = player,
+        _isHolding = false,
+        _onStateChanged = onStateChanged or function() end,
+        _connections = ConnectionManager.new("InventoryTracker"),
+        _fallbackPoll = nil
+    }, InventoryTracker)
 
     self:_startTracking()
     return self
@@ -305,6 +319,35 @@ function InventoryTracker:_watchContainer(container)
     end)
 end
 
+function InventoryTracker:_setupHumanoidEvents(hum, char)
+    -- Graceful fallback: ToolEquipped may not exist on all Humanoid implementations
+    local hasToolEvents = pcall(function()
+        return hum.ToolEquipped ~= nil and hum.ToolUnequipped ~= nil
+    end)
+
+    if hasToolEvents and hum.ToolEquipped then
+        self._connections:Connect(hum.ToolEquipped, function()
+            task.defer(function() self:_reevaluate() end)
+        end)
+        self._connections:Connect(hum.ToolUnequipped, function()
+            task.defer(function() self:_reevaluate() end)
+        end)
+    else
+        -- Fallback: poll character tools when ToolEquipped is unavailable
+        if self._fallbackPoll then
+            task.cancel(self._fallbackPoll)
+            self._fallbackPoll = nil
+        end
+        self._fallbackPoll = task.spawn(function()
+            while self._isHolding ~= nil do
+                task.wait(0.5)
+                if not self._player or not self._player.Parent then break end
+                self:_reevaluate()
+            end
+        end)
+    end
+end
+
 function InventoryTracker:_startTracking()
     self:_reevaluate()
 
@@ -315,12 +358,7 @@ function InventoryTracker:_startTracking()
         self:_watchContainer(char)
         local hum = char:WaitForChild("Humanoid", 5)
         if hum then
-            self._connections:Connect(hum.ToolEquipped, function()
-                task.defer(function() self:_reevaluate() end)
-            end)
-            self._connections:Connect(hum.ToolUnequipped, function()
-                task.defer(function() self:_reevaluate() end)
-            end)
+            self:_setupHumanoidEvents(hum, char)
         end
         self:_reevaluate()
     end)
@@ -329,7 +367,24 @@ function InventoryTracker:_startTracking()
         self:_watchContainer(self._player.Character)
         local hum = self._player.Character:FindFirstChild("Humanoid")
         if hum then
-            self._connections:Connect(hum.ToolEquipped, function()
+            self:_setupHumanoidEvents(hum, self._player.Character)
+        end
+    end
+end
+
+function InventoryTracker:IsHoldingKey()
+    return self._isHolding
+end
+
+function InventoryTracker:Destroy()
+    if self._fallbackPoll then
+        task.cancel(self._fallbackPoll)
+        self._fallbackPoll = nil
+    end
+    self._connections:Destroy()
+    self._isHolding = false
+end
+    
                 task.defer(function() self:_reevaluate() end)
             end)
             self._connections:Connect(hum.ToolUnequipped, function()
