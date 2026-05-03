@@ -3,18 +3,16 @@ local SCRIPT_URL = "https://raw.githubusercontent.com/OWpop/jubilant-doodle/main
 if queue_on_teleport then
     queue_on_teleport('loadstring(game:HttpGet("' .. SCRIPT_URL .. '?t="..tostring(tick())))()')
 end
-
 -- Graceful Hot-Reloading: If the script is already running, safely kill it before starting fresh.
 if _G.OWP_Hub_Running and _G.OWP_PetaHub_Unload then
     pcall(_G.OWP_PetaHub_Unload)
 end
 _G.OWP_Hub_Running = true
-
 local isUnloaded = false
 local scriptConnections = {}
 
 --[[
-    PETAPETA: School of Nightmares V15.6 (Glassmorphism Button Redesign)
+    PETAPETA: School of Nightmares V15.9 (Whitespace Sanitized – Final Fix)
     By: OtherWisePop
     USE RESPONSIBLY AND AT YOUR OWN RISK.
 --]]
@@ -29,14 +27,13 @@ local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 if not player then
-	repeat task.wait() until Players.LocalPlayer
-	player = Players.LocalPlayer
+    repeat task.wait() until Players.LocalPlayer
+    player = Players.LocalPlayer
 end
 local playerGui = player:WaitForChild("PlayerGui")
 
-local GUI_NAME = "OWP_PetaHub_V15_6_" .. tostring(math.random(10000, 99999))
+local GUI_NAME = "OWP_PetaHub_V15_9_" .. tostring(math.random(10000, 99999))
 local CONFIG_FILE_NAME = "OWP_PetaHub_Config.json"
-
 local FONT = Enum.Font.SourceSans
 local FONT_BOLD = Enum.Font.SourceSansBold
 local FONT_SEMIBOLD = Enum.Font.SourceSansSemibold
@@ -46,30 +43,24 @@ local C_BG_MAIN = Color3.fromRGB(15, 15, 15)
 local C_BG_TITLE = Color3.fromRGB(20, 20, 20)
 local C_BG_ROW = Color3.fromRGB(25, 25, 25)
 local C_BORDER = Color3.fromRGB(50, 50, 50)
-
 local C_TEXT_WHITE = Color3.fromRGB(255, 255, 255)
 local C_TEXT_DIM = Color3.fromRGB(150, 150, 150)
 local C_TEXT_DARK = Color3.fromRGB(0, 0, 0)
-
 local C_ACCENT_GREEN = Color3.fromRGB(0, 255, 0)
 local C_ACCENT_YELLOW = Color3.fromRGB(255, 255, 0)
 local C_ACCENT_RED = Color3.fromRGB(255, 0, 0)
 local C_ACCENT_CYAN = Color3.fromRGB(0, 200, 255)
-
 local C_TOGGLE_ON_BG = Color3.fromRGB(60, 20, 20)
 local C_TOGGLE_OFF_BG = Color3.fromRGB(40, 40, 40)
 local C_TOGGLE_OFF_PILL = Color3.fromRGB(80, 80, 80)
 
--- Sizes and Positions 
+-- Sizes and Positions
 local TOGGLE_BUTTON_SIZE = UDim2.new(0, 100, 0, 32)
-local TOGGLE_BUTTON_POS = UDim2.new(0, 10, 0, 10) 
-
+local TOGGLE_BUTTON_POS = UDim2.new(0, 10, 0, 10)
 local MENU_WIDTH = 320
 local MENU_HEIGHT_OPEN = 360
 local MENU_HEIGHT_MINIMIZED = 35
-
-local MAIN_FRAME_POS_CENTER = UDim2.new(0.5, -MENU_WIDTH / 2, 0.1, 0) 
-
+local MAIN_FRAME_POS_CENTER = UDim2.new(0.5, -MENU_WIDTH / 2, 0.1, 0)
 local ANIM_TWEEN_INFO = TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 local TOGGLE_TWEEN_INFO = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
@@ -77,14 +68,14 @@ local TOGGLE_TWEEN_INFO = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.Easing
 local WALK_SPEEDS = {16, 20, 30, 40, 50}
 local IMPORTANT_ITEM_NAMES = { "key", "key_neon", "key_ver2" }
 local MAX_ESP_DISTANCE = 400
-local TELEPORT_COOLDOWN = 10 
+local TELEPORT_COOLDOWN = 10
 local TELEPORT_VERTICAL_OFFSET = 3.5
-local RELATIVE_Y_BOUND = 250  
-local RELATIVE_XZ_BOUND = 2500 
-local ESP_UPDATE_INTERVAL = 0.1 
-local VOID_THRESHOLD = -100 
-local VOID_TELEPORT_HEIGHT = 50 
-local ENFORCE_SPEED_DURATION = 8 
+local RELATIVE_Y_BOUND = 250
+local RELATIVE_XZ_BOUND = 2500
+local ESP_UPDATE_INTERVAL = 0.1
+local VOID_THRESHOLD = -100
+local VOID_TELEPORT_HEIGHT = 50
+local ENFORCE_SPEED_DURATION = 8
 
 -- ================= 2. Centralized State =================
 local Config = {
@@ -106,18 +97,18 @@ local Engine = {
     Cache = { Keys = {}, Fires = {}, Prompts = {} },
     ESPBeams = {}, ESPAttachments = {}, ESPConnections = {}, ESPUpdateRunning = false,
     NoClipConnection = nil, FullBrightConnection = nil, AntiVoidConnection = nil, AntiFreezeConnection = nil,
-    SpeedEnforceRunning = false, SpeedEnforceCancelTime = 0, HiddenFires = {}, 
+    SpeedEnforceRunning = false, SpeedEnforceCancelTime = 0, HiddenFires = {},
     TPCooldownEnd = 0, TPWarningEnd = 0, TPWarningText = "",
     MenuMinimized = false,
-    SavedMenuPosition = MAIN_FRAME_POS_CENTER -- [FIXED] Cache to remember where the user dragged it
+    SavedMenuPosition = MAIN_FRAME_POS_CENTER
 }
 
 local initialLighting = {
-	Ambient = Lighting.Ambient,
-	OutdoorAmbient = Lighting.OutdoorAmbient,
-	Brightness = Lighting.Brightness,
-	FogEnd = Lighting.FogEnd,
-	GlobalShadows = Lighting.GlobalShadows,
+    Ambient = Lighting.Ambient,
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+    Brightness = Lighting.Brightness,
+    FogEnd = Lighting.FogEnd,
+    GlobalShadows = Lighting.GlobalShadows,
 }
 
 -- ================= 3. State Persistence =================
@@ -148,7 +139,7 @@ local function SaveConfig()
 end
 
 LoadConfig()
-Config.GuiVisible = false -- Force menu closed on fresh injection
+Config.GuiVisible = false
 
 -- ================= 4. Helper Functions =================
 local function GetDictKeys(dict)
@@ -174,7 +165,6 @@ local function isPlayerHoldingAnyKey()
     if scanForKeywords(player.Character) then return true end
     if scanForKeywords(player.Backpack) then return true end
     if Workspace.CurrentCamera and scanForKeywords(Workspace.CurrentCamera) then return true end
-    
     if player.Character then
         for _, child in ipairs(player.Character:GetChildren()) do
             if child:IsA("Tool") then return true end
@@ -184,15 +174,15 @@ local function isPlayerHoldingAnyKey()
 end
 
 local function isItemOnGround(obj)
-	if not obj then return false end
-	if not obj:IsDescendantOf(Workspace) then return false end
-	local parent = obj.Parent
-	while parent and parent ~= Workspace do
-		if parent:IsA("Model") and parent:FindFirstChild("Humanoid") then return false end
-		parent = parent.Parent
-	end
-	if Workspace.CurrentCamera and obj:IsDescendantOf(Workspace.CurrentCamera) then return false end
-	return true
+    if not obj then return false end
+    if not obj:IsDescendantOf(Workspace) then return false end
+    local parent = obj.Parent
+    while parent and parent ~= Workspace do
+        if parent:IsA("Model") and parent:FindFirstChild("Humanoid") then return false end
+        parent = parent.Parent
+    end
+    if Workspace.CurrentCamera and obj:IsDescendantOf(Workspace.CurrentCamera) then return false end
+    return true
 end
 
 local function isWithinRelativeBounds(targetPos, playerPos)
@@ -204,25 +194,24 @@ local function isWithinRelativeBounds(targetPos, playerPos)
 end
 
 local function restoreLighting()
-	Lighting.Ambient = initialLighting.Ambient
-	Lighting.OutdoorAmbient = initialLighting.OutdoorAmbient
-	Lighting.Brightness = initialLighting.Brightness
-	Lighting.FogEnd = initialLighting.FogEnd
-	Lighting.GlobalShadows = initialLighting.GlobalShadows
+    Lighting.Ambient = initialLighting.Ambient
+    Lighting.OutdoorAmbient = initialLighting.OutdoorAmbient
+    Lighting.Brightness = initialLighting.Brightness
+    Lighting.FogEnd = initialLighting.FogEnd
+    Lighting.GlobalShadows = initialLighting.GlobalShadows
 end
 
 local function updateEspVisuals()
-	local beamColor = Config.FullBright and C_ACCENT_CYAN or C_ACCENT_GREEN
-	local transparency = Config.FullBright and 0.1 or 0.3
-	local lightEmission = Config.FullBright and 0.6 or 0.35
-
-	for obj, beam in pairs(Engine.ESPBeams) do
-		if beam and beam.Parent then
-			beam.Color = ColorSequence.new(beamColor)
-			beam.Transparency = NumberSequence.new(transparency)
-			beam.LightEmission = lightEmission
-		end
-	end
+    local beamColor = Config.FullBright and C_ACCENT_CYAN or C_ACCENT_GREEN
+    local transparency = Config.FullBright and 0.1 or 0.3
+    local lightEmission = Config.FullBright and 0.6 or 0.35
+    for obj, beam in pairs(Engine.ESPBeams) do
+        if beam and beam.Parent then
+            beam.Color = ColorSequence.new(beamColor)
+            beam.Transparency = NumberSequence.new(transparency)
+            beam.LightEmission = lightEmission
+        end
+    end
 end
 
 -- ================= 5. Master Cache System =================
@@ -237,7 +226,6 @@ end
 local function CategorizeObject(obj)
     local cls = obj.ClassName
     local lowerName = obj.Name:lower()
-    
     if cls == "ProximityPrompt" then
         local action, name, object = obj.ActionText:lower(), lowerName, obj.ObjectText:lower()
         if string.find(action, "search") or string.find(name, "search") then Engine.Cache.Prompts[obj] = true end
@@ -248,7 +236,6 @@ local function CategorizeObject(obj)
             CheckFireText(obj, a)
         end))
         table.insert(scriptConnections, obj:GetPropertyChangedSignal("ObjectText"):Connect(function() CheckFireText(obj, obj.ObjectText) end))
-
     elseif cls == "BillboardGui" or cls == "SurfaceGui" or cls == "TextLabel" then
         if cls == "TextLabel" then
             CheckFireText(obj, obj.Text)
@@ -267,7 +254,6 @@ end
 
 for _, obj in ipairs(Workspace:GetDescendants()) do CategorizeObject(obj) end
 table.insert(scriptConnections, Workspace.DescendantAdded:Connect(CategorizeObject))
-
 table.insert(scriptConnections, Workspace.DescendantRemoving:Connect(function(obj)
     Engine.Cache.Keys[obj] = nil
     Engine.Cache.Fires[obj] = nil
@@ -276,31 +262,30 @@ end))
 
 -- ================= 6. Core Logic Functions =================
 local function cleanEspForItem(obj)
-	if not obj then return end
-	if Engine.ESPBeams[obj] then Engine.ESPBeams[obj]:Destroy(); Engine.ESPBeams[obj] = nil end
-	if Engine.ESPAttachments[obj] then Engine.ESPAttachments[obj]:Destroy(); Engine.ESPAttachments[obj] = nil end
-	if Engine.ESPConnections[obj] then
-		for _, conn in ipairs(Engine.ESPConnections[obj]) do conn:Disconnect() end
-		Engine.ESPConnections[obj] = nil
-	end
+    if not obj then return end
+    if Engine.ESPBeams[obj] then Engine.ESPBeams[obj]:Destroy(); Engine.ESPBeams[obj] = nil end
+    if Engine.ESPAttachments[obj] then Engine.ESPAttachments[obj]:Destroy(); Engine.ESPAttachments[obj] = nil end
+    if Engine.ESPConnections[obj] then
+        for _, conn in ipairs(Engine.ESPConnections[obj]) do conn:Disconnect() end
+        Engine.ESPConnections[obj] = nil
+    end
 end
 
 local function cleanupAllEsp()
-	local objectsToClean = {}
-	for obj, _ in pairs(Engine.ESPBeams) do table.insert(objectsToClean, obj) end
-	for _, obj in ipairs(objectsToClean) do cleanEspForItem(obj) end
-	Engine.ESPBeams, Engine.ESPAttachments, Engine.ESPConnections = {}, {}, {}
+    local objectsToClean = {}
+    for obj, _ in pairs(Engine.ESPBeams) do table.insert(objectsToClean, obj) end
+    for _, obj in ipairs(objectsToClean) do cleanEspForItem(obj) end
+    Engine.ESPBeams, Engine.ESPAttachments, Engine.ESPConnections = {}, {}, {}
 end
 
 local function createEspForItem(obj)
-	if not obj or Engine.ESPBeams[obj] or not obj.Parent then return end
+    if not obj or Engine.ESPBeams[obj] or not obj.Parent then return end
+    local adornee = obj:FindFirstChild("Handle") or obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+    if not adornee or not adornee:IsA("BasePart") or not adornee.Parent then return end
 
-	local adornee = obj:FindFirstChild("Handle") or obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
-	if not adornee or not adornee:IsA("BasePart") or not adornee.Parent then return end
-
-	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-	if not root or not isItemOnGround(adornee) or not isWithinRelativeBounds(adornee.Position, root.Position) then return end
-	if Config.ESPDistance and (adornee.Position - root.Position).Magnitude > MAX_ESP_DISTANCE then return end
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root or not isItemOnGround(adornee) or not isWithinRelativeBounds(adornee.Position, root.Position) then return end
+    if Config.ESPDistance and (adornee.Position - root.Position).Magnitude > MAX_ESP_DISTANCE then return end
 
     local originAttach = root:FindFirstChild("OWP_OriginAttach")
     if not originAttach then 
@@ -308,37 +293,36 @@ local function createEspForItem(obj)
         originAttach.Name = "OWP_OriginAttach"
     end
 
-	local targetAttach = Instance.new("Attachment", adornee)
-	local beam = Instance.new("Beam")
-	beam.Attachment0 = originAttach
-	beam.Attachment1 = targetAttach
-	beam.Width0 = 0.1
-	beam.Width1 = 0.1
-	beam.FaceCamera = true
-	beam.Color = ColorSequence.new(Config.FullBright and C_ACCENT_CYAN or C_ACCENT_GREEN)
-	beam.Transparency = NumberSequence.new(Config.FullBright and 0.1 or 0.3)
-	beam.LightEmission = Config.FullBright and 0.6 or 0.35
-	beam.Parent = Workspace:FindFirstChildOfClass("Terrain") or Workspace
+    local targetAttach = Instance.new("Attachment", adornee)
+    local beam = Instance.new("Beam")
+    beam.Attachment0 = originAttach
+    beam.Attachment1 = targetAttach
+    beam.Width0 = 0.1
+    beam.Width1 = 0.1
+    beam.FaceCamera = true
+    beam.Color = ColorSequence.new(Config.FullBright and C_ACCENT_CYAN or C_ACCENT_GREEN)
+    beam.Transparency = NumberSequence.new(Config.FullBright and 0.1 or 0.3)
+    beam.LightEmission = Config.FullBright and 0.6 or 0.35
+    beam.Parent = Workspace:FindFirstChildOfClass("Terrain") or Workspace
 
-	Engine.ESPBeams[obj] = beam
-	Engine.ESPAttachments[obj] = targetAttach
+    Engine.ESPBeams[obj] = beam
+    Engine.ESPAttachments[obj] = targetAttach
 
-	local connections = {}
-	table.insert(connections, obj.Destroying:Connect(function() cleanEspForItem(obj) end))
-	table.insert(connections, adornee.Destroying:Connect(function() cleanEspForItem(obj) end))
-	if obj:IsA("Tool") or obj:IsA("Model") then
-		table.insert(connections, obj.AncestryChanged:Connect(function(_, newParent)
-			if not newParent or not (newParent:IsDescendantOf(Workspace)) then cleanEspForItem(obj) end
-		end))
-	end
-	Engine.ESPConnections[obj] = connections
+    local connections = {}
+    table.insert(connections, obj.Destroying:Connect(function() cleanEspForItem(obj) end))
+    table.insert(connections, adornee.Destroying:Connect(function() cleanEspForItem(obj) end))
+    if obj:IsA("Tool") or obj:IsA("Model") then
+        table.insert(connections, obj.AncestryChanged:Connect(function(_, newParent)
+            if not newParent or not (newParent:IsDescendantOf(Workspace)) then cleanEspForItem(obj) end
+        end))
+    end
+    Engine.ESPConnections[obj] = connections
 end
 
 local function updateEspBeamsThrottled()
-	if Engine.ESPUpdateRunning then return end
-	Engine.ESPUpdateRunning = true
-
-	while Config.ESP do
+    if Engine.ESPUpdateRunning then return end
+    Engine.ESPUpdateRunning = true
+    while Config.ESP do
         task.wait(ESP_UPDATE_INTERVAL)
         if isUnloaded then break end
         
@@ -364,9 +348,9 @@ local function updateEspBeamsThrottled()
             for _, objToClean in ipairs(itemsToClean) do cleanEspForItem(objToClean) end
             for _, obj in ipairs(GetDictKeys(Engine.Cache.Keys)) do pcall(createEspForItem, obj) end
         end)
-	end
-	Engine.ESPUpdateRunning = false
-	cleanupAllEsp()
+    end
+    Engine.ESPUpdateRunning = false
+    cleanupAllEsp()
 end
 
 local function hideFire(obj)
@@ -386,7 +370,6 @@ table.insert(scriptConnections, RunService.Stepped:Connect(function()
     local char = player.Character
     local hum = char and char:FindFirstChild("Humanoid")
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    
     if hum and root then
         local desiredSpeed = WALK_SPEEDS[Config.SpeedIndex]
         if Config.AntiFreeze then
@@ -409,7 +392,7 @@ end))
 task.spawn(function()
     while task.wait(0.1) do
         if isUnloaded then break end
-        if Config.BypassFire then 
+        if Config.BypassFire then
             for _, obj in ipairs(GetDictKeys(Engine.Cache.Fires)) do
                 if obj and obj.Parent then pcall(hideFire, obj) end
             end
@@ -430,7 +413,7 @@ task.spawn(function()
     end
 end)
 
--- ================= 8. Feature Registration List =================
+-- ================= 8. Feature Registration List (V15.7 Reorder & Rename) =================
 local FeatureList = {
     {Name = "Speed", Key = "SpeedIndex", Type = "Cycle", CycleOptions = WALK_SPEEDS, Action = function(val)
         Engine.SpeedEnforceCancelTime = tick() + ENFORCE_SPEED_DURATION
@@ -522,6 +505,11 @@ local FeatureList = {
     end},
     
     {Name = "Speed Lock", Key = "SpeedLock", Type = "Toggle", Action = nil},
+    
+    {Name = "Search Locker", Key = "SearchAura", Type = "Toggle", Action = nil},
+    
+    {Name = "Anti-Freeze", Key = "AntiFreeze", Type = "Toggle", Action = nil},
+    
     {Name = "Bypass Fire", Key = "BypassFire", Type = "Toggle", Action = function(val)
         if not val then
             for obj, data in pairs(Engine.HiddenFires) do
@@ -529,12 +517,10 @@ local FeatureList = {
             end
             table.clear(Engine.HiddenFires)
         end
-    end},
-    {Name = "Search Aura", Key = "SearchAura", Type = "Toggle", Action = nil},
-    {Name = "Anti-Freeze", Key = "AntiFreeze", Type = "Toggle", Action = nil}
+    end}
 }
 
--- ================= 9. UI Generation (Phase 4 Overhaul) =================
+-- ================= 9. UI Generation (Glassmorphism Buttons) =================
 local activeScreenGui = nil
 local activeMainFrame = nil
 local isBuildingUI = false
@@ -549,7 +535,7 @@ local function BuildUI()
     screenGui.Name = GUI_NAME
     screenGui.ResetOnSpawn = false
 
-    -- [FIXED] Toggle Button Glassmorphism Redesign
+    -- Toggle Button Glassmorphism Redesign
     local toggleButton = Instance.new("TextButton", screenGui)
     toggleButton.Size = TOGGLE_BUTTON_SIZE
     toggleButton.Position = TOGGLE_BUTTON_POS
@@ -563,16 +549,13 @@ local function BuildUI()
     toggleButton.Draggable = true
     toggleButton.ClipsDescendants = true
 
-    -- Glass edge stroke
     local glassStroke = Instance.new("UIStroke", toggleButton)
     glassStroke.Color = Color3.fromRGB(80, 80, 80)
     glassStroke.Transparency = 0.5
     glassStroke.Thickness = 1.5
 
-    -- Rounded corners
     Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0, 12)
 
-    -- Thin red accent at bottom
     local bottomAccent = Instance.new("Frame", toggleButton)
     bottomAccent.Size = UDim2.new(1, 0, 0, 2)
     bottomAccent.Position = UDim2.new(0, 0, 1, 0)
@@ -581,7 +564,7 @@ local function BuildUI()
     bottomAccent.BackgroundTransparency = 0.3
     bottomAccent.BorderSizePixel = 0
 
-    -- [FIXED] Teleport HUD Button Glassmorphism Redesign
+    -- Teleport HUD Button Glassmorphism Redesign
     local tpButton = Instance.new("TextButton", screenGui)
     tpButton.Size = UDim2.new(0, 130, 0, 32)
     tpButton.Position = UDim2.new(0, 10, 0, 48) 
@@ -606,7 +589,6 @@ local function BuildUI()
     -- Main Hub Frame
     local mainFrame = Instance.new("Frame", screenGui)
     mainFrame.Size = UDim2.new(0, MENU_WIDTH, 0, MENU_HEIGHT_OPEN)
-    -- Calculate off-screen position dynamically 
     mainFrame.Position = UDim2.new(0, -MENU_WIDTH - 30, Engine.SavedMenuPosition.Y.Scale, Engine.SavedMenuPosition.Y.Offset)
     mainFrame.BackgroundColor3 = C_BG_MAIN
     mainFrame.BorderSizePixel = 0
@@ -619,7 +601,7 @@ local function BuildUI()
     titleBar.Size = UDim2.new(1, 0, 0, MENU_HEIGHT_MINIMIZED)
     titleBar.BackgroundColor3 = C_BG_TITLE
     titleBar.BorderSizePixel = 0
-    
+
     local dragInput, dragStart, startPos
     titleBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -637,15 +619,14 @@ local function BuildUI()
     table.insert(scriptConnections, RunService.Heartbeat:Connect(function()
         if dragStart and dragInput and Config.GuiVisible then
             local delta = dragInput.Position - dragStart
-            mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) 
             Engine.SavedMenuPosition = mainFrame.Position
         end
     end))
 
     local titleCorner = Instance.new("UICorner", titleBar)
     titleCorner.CornerRadius = UDim.new(0, 8)
-    
-    -- [FIXED] Title Text adjusted to perfectly fit ALL CAPS and author text
+
     local titleText = Instance.new("TextLabel", titleBar)
     titleText.Size = UDim2.new(0, 185, 1, 0)
     titleText.Position = UDim2.new(0, 10, 0, 0)
@@ -666,7 +647,6 @@ local function BuildUI()
     authorText.TextSize = 10
     authorText.TextXAlignment = Enum.TextXAlignment.Left
 
-    -- Controls fixed firmly to the right side
     local controlsFrame = Instance.new("Frame", titleBar)
     controlsFrame.Size = UDim2.new(0, 60, 1, 0)
     controlsFrame.Position = UDim2.new(1, 0, 0, 0)
@@ -808,7 +788,6 @@ local function BuildUI()
         CreateButton(feature, order)
     end
 
-    -- [FIXED] Drag Memory Logic: Slides horizontally based on your saved Y height
     local function ToggleMenu()
         Config.GuiVisible = not Config.GuiVisible
         if Config.GuiVisible then
@@ -864,7 +843,6 @@ local function BuildUI()
     activeScreenGui = screenGui
     activeMainFrame = mainFrame
     _G.OWP_TP_Button = tpButton
-    -- _G.OWP_TP_Accent removed, no longer needed
 end
 
 -- ================= 10. Initialization, Failsafes & Hooks =================
@@ -876,7 +854,6 @@ end
 
 local uiMissingTime = 0
 local lastBuildTime = 0
-
 task.spawn(function()
     while task.wait(1) do
         if isUnloaded then break end
@@ -890,10 +867,10 @@ task.spawn(function()
                 isBuildingUI = false
             end
             if uiMissingTime >= 5 then
-                if Engine.NoClipConnection then 
+                if Engine.NoClipConnection then
                     warn("[OWP HUB] UI missing for 5+ seconds! Safety fallback: Temporarily suspending NoClip physics to prevent falling.")
                     Engine.NoClipConnection:Disconnect()
-                    Engine.NoClipConnection = nil 
+                    Engine.NoClipConnection = nil
                     if player.Character then
                         for _, p in ipairs(player.Character:GetDescendants()) do
                             if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then pcall(function() p.CanCollide = true end) end
@@ -952,7 +929,6 @@ end
 -- ================= 11. Graceful Unload Logic =================
 _G.OWP_PetaHub_Unload = function()
     isUnloaded = true
-    
     for _, conn in ipairs(scriptConnections) do
         if type(conn) == "table" and conn.Disconnect then
             pcall(function() conn:Disconnect() end)
@@ -960,26 +936,26 @@ _G.OWP_PetaHub_Unload = function()
             pcall(function() conn:Disconnect() end)
         end
     end
-    
+
     if Engine.NoClipConnection then Engine.NoClipConnection:Disconnect() end
     if Engine.FullBrightConnection then Engine.FullBrightConnection:Disconnect() end
     if Engine.AntiVoidConnection then Engine.AntiVoidConnection:Disconnect() end
     if Engine.AntiFreezeConnection then Engine.AntiFreezeConnection:Disconnect() end
-    
+
     restoreLighting()
-    
+
     if player.Character then
         for _, p in ipairs(player.Character:GetDescendants()) do
             if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then pcall(function() p.CanCollide = true end) end
         end
     end
-    
+
     cleanupAllEsp()
-    
+
     local guiTarget = (gethui and gethui()) or game:GetService("CoreGui") or playerGui
     for _, child in ipairs(guiTarget:GetChildren()) do
         if string.match(child.Name, "^OWP_PetaHub") then pcall(function() child:Destroy() end) end
     end
 end
 
-print("✅ PETAPETA: School of Nightmares V15.6 (Glassmorphism Buttons) - Loaded")
+print("✅ PETAPETA: School of Nightmares V15.9 (Whitespace Sanitized – Final Fix) - Loaded")
