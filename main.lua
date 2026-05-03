@@ -12,7 +12,7 @@ local isUnloaded = false
 local scriptConnections = {}
 
 --[[
-    PETAPETA: School of Nightmares V15.15 (Theme-Free Stabilized Build)
+    PETAPETA: School of Nightmares V15.16 (Cycle Logic Stabilization & Speed Freeze Fix)
     By: OtherWisePop
     USE RESPONSIBLY AND AT YOUR OWN RISK.
 --]]
@@ -32,7 +32,7 @@ if not player then
 end
 local playerGui = player:WaitForChild("PlayerGui")
 
-local GUI_NAME = "OWP_PetaHub_V15_15_" .. tostring(math.random(10000, 99999))
+local GUI_NAME = "OWP_PetaHub_V15_16_" .. tostring(math.random(10000, 99999))
 local CONFIG_FILE_NAME = "OWP_PetaHub_Config.json"
 local FONT = Enum.Font.SourceSans
 local FONT_BOLD = Enum.Font.SourceSansBold
@@ -47,8 +47,7 @@ local C_TEXT_WHITE = Color3.fromRGB(255, 255, 255)
 local C_TEXT_DIM = Color3.fromRGB(150, 150, 150)
 local C_TEXT_DARK = Color3.fromRGB(0, 0, 0)
 local C_ACCENT_GREEN = Color3.fromRGB(0, 255, 0)
-local C_ACCENT_YELLOW = Color3.fromRGB(255, 255, 0)
-local C_ACCENT_RED = Color3.fromRGB(255, 0, 0)
+local C_ACCENT_YELLOW = Color3.fromRGB(255, 255, 0)local C_ACCENT_RED = Color3.fromRGB(255, 0, 0)
 local C_ACCENT_CYAN = Color3.fromRGB(0, 200, 255)
 local C_TOGGLE_ON_BG = Color3.fromRGB(60, 20, 20)
 local C_TOGGLE_OFF_BG = Color3.fromRGB(40, 40, 40)
@@ -97,8 +96,7 @@ local Engine = {
     Cache = {Keys = {}, Fires = {}, Prompts = {}},
     ESPBeams = {}, ESPAttachments = {}, ESPConnections = {}, ESPUpdateRunning = false,
     NoClipConnection = nil, FullBrightConnection = nil, AntiVoidConnection = nil, AntiFreezeConnection = nil,
-    SpeedEnforceRunning = false, SpeedEnforceCancelTime = 0, HiddenFires = {},
-    TPCooldownEnd = 0, TPWarningEnd = 0, TPWarningText = "",
+    SpeedEnforceRunning = false, SpeedEnforceCancelTime = 0, HiddenFires = {},    TPCooldownEnd = 0, TPWarningEnd = 0, TPWarningText = "",
     MenuMinimized = false,
     SavedMenuPosition = MAIN_FRAME_POS_CENTER
 }
@@ -121,7 +119,6 @@ local function LoadConfig()
             if decodeSuccess and type(decoded) == "table" then
                 for k, v in pairs(decoded) do
                     if Config[k] ~= nil and type(Config[k]) == type(v) then
-                        if k == "SpeedIndex" and (v < 1 or v > #WALK_SPEEDS) then continue end
                         Config[k] = v
                     end
                 end
@@ -138,12 +135,17 @@ local function SaveConfig()
 end
 
 LoadConfig()
+
+-- Strict Config Validation (Prevents nil/type corruption)
+if type(Config.SpeedIndex) ~= "number" or Config.SpeedIndex < 1 or Config.SpeedIndex > #WALK_SPEEDS then
+    Config.SpeedIndex = 2
+end
+
 Config.GuiVisible = false
 
 -- ================= 4. Helper Functions =================
 local function GetDictKeys(dict)
-    local keys = {}
-    for k in pairs(dict) do table.insert(keys, k) end
+    local keys = {}    for k in pairs(dict) do table.insert(keys, k) end
     return keys
 end
 
@@ -192,8 +194,7 @@ local function isWithinRelativeBounds(targetPos, playerPos)
     return true
 end
 
-local function restoreLighting()
-    Lighting.Ambient = initialLighting.Ambient
+local function restoreLighting()    Lighting.Ambient = initialLighting.Ambient
     Lighting.OutdoorAmbient = initialLighting.OutdoorAmbient
     Lighting.Brightness = initialLighting.Brightness
     Lighting.FogEnd = initialLighting.FogEnd
@@ -242,8 +243,7 @@ local function CategorizeObject(obj)
         end
     end
 
-    local isKey = false
-    for _, n in ipairs(IMPORTANT_ITEM_NAMES) do
+    local isKey = false    for _, n in ipairs(IMPORTANT_ITEM_NAMES) do
         if string.find(lowerName, n:lower()) then isKey = true; break end
     end
     if not isKey and string.find(lowerName, "key") then isKey = true end
@@ -292,8 +292,7 @@ local function createEspForItem(obj)
     local targetAttach = Instance.new("Attachment", adornee)
     local beam = Instance.new("Beam")
     beam.Attachment0 = originAttach
-    beam.Attachment1 = targetAttach
-    beam.Width0 = 0.1
+    beam.Attachment1 = targetAttach    beam.Width0 = 0.1
     beam.Width1 = 0.1
     beam.FaceCamera = true
     beam.Color = ColorSequence.new(Config.FullBright and C_ACCENT_CYAN or C_ACCENT_GREEN)
@@ -342,8 +341,7 @@ local function updateEspBeamsThrottled()
             for _, obj in ipairs(GetDictKeys(Engine.Cache.Keys)) do pcall(createEspForItem, obj) end
         end)
     end
-    Engine.ESPUpdateRunning = false
-    cleanupAllEsp()
+    Engine.ESPUpdateRunning = false    cleanupAllEsp()
 end
 
 local function hideFire(obj)
@@ -392,8 +390,7 @@ task.spawn(function()
         end
         if Config.SearchAura then
             local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-            if root then
-                for _, prompt in ipairs(GetDictKeys(Engine.Cache.Prompts)) do
+            if root then                for _, prompt in ipairs(GetDictKeys(Engine.Cache.Prompts)) do
                     if prompt and prompt.Parent and prompt.Enabled then
                         local part = prompt.Parent
                         if part:IsA("BasePart") and (part.Position - root.Position).Magnitude <= (prompt.MaxActivationDistance + 1.5) then
@@ -408,7 +405,7 @@ end)
 
 -- ================= 8. Feature Registration List (Data-Driven Sections) =================
 local FeatureList = {
-    {Name = "Speed", Key = "SpeedIndex", Type = "Cycle", CycleOptions = WALK_SPEEDS, Section = "All Mode",
+    {Name = "Speed", Key = "SpeedIndex", Type = "Cycle", CycleOptions = {1, 2, 3, 4, 5}, Section = "All Mode",
     Action = function(val)
         Engine.SpeedEnforceCancelTime = tick() + ENFORCE_SPEED_DURATION
         Engine.SpeedEnforceRunning = true
@@ -442,8 +439,7 @@ local FeatureList = {
     end,
     OnCharacterAdded = function(char, hum)
         if Engine.NoClipConnection then Engine.NoClipConnection:Disconnect(); Engine.NoClipConnection = nil end
-        if Config.NoClip then
-            task.spawn(function()
+        if Config.NoClip then            task.spawn(function()
                 task.wait(0.5)
                 if Config.NoClip and not Engine.NoClipConnection then
                     Engine.NoClipConnection = RunService.Stepped:Connect(function()
@@ -492,8 +488,7 @@ local FeatureList = {
             Engine.AntiVoidConnection = RunService.Heartbeat:Connect(function()
                 local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
                 if root and root.Position.Y < VOID_THRESHOLD then
-                    pcall(function() root.CFrame = CFrame.new(root.Position + Vector3.new(0, VOID_TELEPORT_HEIGHT - root.Position.Y, 0)) end)
-                end
+                    pcall(function() root.CFrame = CFrame.new(root.Position + Vector3.new(0, VOID_TELEPORT_HEIGHT - root.Position.Y, 0)) end)                end
             end)
         end
     end},
@@ -542,8 +537,7 @@ local function BuildUI()
     toggleButton.Font = FONT_BOLD
     toggleButton.TextScaled = true
     toggleButton.TextXAlignment = Enum.TextXAlignment.Center
-    toggleButton.Draggable = true
-    toggleButton.ClipsDescendants = true
+    toggleButton.Draggable = true    toggleButton.ClipsDescendants = true
 
     local glassStroke = Instance.new("UIStroke", toggleButton)
     glassStroke.Color = Color3.fromRGB(80, 80, 80)
@@ -592,8 +586,7 @@ local function BuildUI()
 
     -- Title Bar
     local titleBar = Instance.new("Frame", mainFrame)
-    titleBar.Size = UDim2.new(1, 0, 0, MENU_HEIGHT_MINIMIZED)
-    titleBar.BackgroundColor3 = C_BG_TITLE
+    titleBar.Size = UDim2.new(1, 0, 0, MENU_HEIGHT_MINIMIZED)    titleBar.BackgroundColor3 = C_BG_TITLE
     titleBar.BorderSizePixel = 0
 
     local dragInput, dragStart, startPos
@@ -642,8 +635,7 @@ local function BuildUI()
 
     local controlsFrame = Instance.new("Frame", titleBar)
     controlsFrame.Size = UDim2.new(0, 60, 1, 0)
-    controlsFrame.Position = UDim2.new(1, 0, 0, 0)
-    controlsFrame.AnchorPoint = Vector2.new(1, 0)
+    controlsFrame.Position = UDim2.new(1, 0, 0, 0)    controlsFrame.AnchorPoint = Vector2.new(1, 0)
     controlsFrame.BackgroundTransparency = 1
 
     local controlsLayout = Instance.new("UIListLayout", controlsFrame)
@@ -692,8 +684,7 @@ local function BuildUI()
     -- Helper: Create Section Header
     local function CreateSectionHeader(sectionName, layoutOrder)
         local container = Instance.new("Frame", scrollFrame)
-        container.Size = UDim2.new(1, -20, 0, 34)
-        container.LayoutOrder = layoutOrder
+        container.Size = UDim2.new(1, -20, 0, 34)        container.LayoutOrder = layoutOrder
         container.BackgroundTransparency = 1
         container.BorderSizePixel = 0
 
@@ -743,7 +734,6 @@ local function BuildUI()
         title.Font = FONT_SEMIBOLD
         title.TextSize = 16
         title.TextXAlignment = Enum.TextXAlignment.Left
-
         local indicatorBG = Instance.new("Frame", row)
         indicatorBG.AnchorPoint = Vector2.new(1, 0.5)
         indicatorBG.Position = UDim2.new(1, -10, 0.5, 0)
@@ -785,19 +775,25 @@ local function BuildUI()
                 end
             elseif feature.Type == "Cycle" then
                 indicatorBG.BackgroundColor3 = C_TOGGLE_OFF_BG
-                valueText.Text = tostring(Config[feature.Key])
+                local val = Config[feature.Key]
+                -- Map index to display value for Speed, otherwise show raw value
+                valueText.Text = (feature.Key == "SpeedIndex") and tostring(WALK_SPEEDS[val] or val) or tostring(val)
             end
         end
         feature._updateVisuals = function() updateVisuals(false) end
 
-        row.MouseButton1Click:Connect(function()
-            if feature.Type == "Toggle" then
+        row.MouseButton1Click:Connect(function()            if feature.Type == "Toggle" then
                 Config[feature.Key] = not Config[feature.Key]
             elseif feature.Type == "Cycle" then
+                local options = feature.CycleOptions
                 local current = Config[feature.Key]
-                local idx = table.find(feature.CycleOptions, current) or 1
-                idx = (idx % #feature.CycleOptions) + 1
-                Config[feature.Key] = feature.CycleOptions[idx]
+                -- Manual index search for maximum executor compatibility
+                local idx = 1
+                for i, v in ipairs(options) do
+                    if v == current then idx = i; break end
+                end
+                idx = (idx % #options) + 1
+                Config[feature.Key] = options[idx]
             end
             updateVisuals(true)
             if feature.Action then feature.Action(Config[feature.Key]) end
@@ -836,7 +832,6 @@ local function BuildUI()
         end
         SaveConfig()
     end
-
     toggleButton.MouseButton1Click:Connect(ToggleMenu)
     closeBtn.MouseButton1Click:Connect(function() if Config.GuiVisible then ToggleMenu() end end)
 
@@ -885,8 +880,7 @@ end
 if not isBuildingUI then
     isBuildingUI = true
     pcall(BuildUI)
-    isBuildingUI = false
-end
+    isBuildingUI = falseend
 
 local uiMissingTime = 0
 local lastBuildTime = 0
@@ -935,8 +929,7 @@ task.spawn(function()
         else
             newState, newColor = "Teleport To Key", C_ACCENT_GREEN
         end
-        if _G.OWP_TP_Button.Text ~= newState then
-            _G.OWP_TP_Button.Text = newState
+        if _G.OWP_TP_Button.Text ~= newState then            _G.OWP_TP_Button.Text = newState
             _G.OWP_TP_Button.TextColor3 = newColor
         end
     end
@@ -985,7 +978,6 @@ _G.OWP_PetaHub_Unload = function()
     local guiTarget = (gethui and gethui()) or game:GetService("CoreGui") or playerGui
     for _, child in ipairs(guiTarget:GetChildren()) do
         if string.match(child.Name, "^OWP_PetaHub") then pcall(function() child:Destroy() end) end
-    end
-end
+    endend
 
-print("✅ PETAPETA: School of Nightmares V15.15 (Theme-Free Stabilized Build) - Loaded")
+print("✅ PETAPETA: School of Nightmares V15.16 (Cycle Logic Stabilization) - Loaded")
