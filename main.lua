@@ -13,7 +13,7 @@ local isUnloaded = false
 local scriptConnections = {}
 
 --[[
-    PETAPETA: School of Nightmares V15.11 (Manually Sanitized & Architecturally Verified)
+    PETAPETA: School of Nightmares V15.12 (Modern Section Headers - Option B)
     By: OtherWisePop
     USE RESPONSIBLY AND AT YOUR OWN RISK.
 --]]
@@ -33,7 +33,7 @@ if not player then
 end
 local playerGui = player:WaitForChild("PlayerGui")
 
-local GUI_NAME = "OWP_PetaHub_V15_11_" .. tostring(math.random(10000, 99999))
+local GUI_NAME = "OWP_PetaHub_V15_12_" .. tostring(math.random(10000, 99999))
 local CONFIG_FILE_NAME = "OWP_PetaHub_Config.json"
 local FONT = Enum.Font.SourceSans
 local FONT_BOLD = Enum.Font.SourceSansBold
@@ -527,7 +527,7 @@ local FeatureList = {
     end}
 }
 
--- ================= 9. UI Generation (Glassmorphism + Dynamic Sections) =================
+-- ================= 9. UI Generation (Glassmorphism + Modern Section Headers) =================
 local activeScreenGui = nil
 local activeMainFrame = nil
 local isBuildingUI = false
@@ -703,30 +703,38 @@ local function BuildUI()
     Instance.new("UIPadding", scrollFrame).PaddingTop = UDim.new(0, 8)
     Instance.new("UIPadding", scrollFrame).PaddingBottom = UDim.new(0, 8)
 
-    -- Helper: Create Section Header
+    -- Helper: Create Section Header (Option B: Modern High-Contrast)
     local function CreateSectionHeader(sectionName, layoutOrder)
         local container = Instance.new("Frame", scrollFrame)
-        container.Size = UDim2.new(1, -20, 0, 28)
+        container.Size = UDim2.new(1, -20, 0, 34)
         container.LayoutOrder = layoutOrder
         container.BackgroundTransparency = 1
         container.BorderSizePixel = 0
 
+        local accentBar = Instance.new("Frame", container)
+        accentBar.Size = UDim2.new(0, 2, 0, 14)
+        accentBar.Position = UDim2.new(0, 12, 0.5, 0)
+        accentBar.AnchorPoint = Vector2.new(0, 0.5)
+        accentBar.BackgroundColor3 = C_ACCENT_RED
+        accentBar.BorderSizePixel = 0
+        Instance.new("UICorner", accentBar).CornerRadius = UDim.new(1, 0)
+
         local label = Instance.new("TextLabel", container)
-        label.Size = UDim2.new(1, -12, 1, 0)
-        label.Position = UDim2.new(0, 12, 0, 0)
+        label.Size = UDim2.new(1, -30, 1, 0)
+        label.Position = UDim2.new(0, 22, 0, 0)
         label.BackgroundTransparency = 1
-        label.Text = sectionName
-        label.TextColor3 = C_TEXT_DIM
+        label.Text = string.upper(sectionName)
+        label.TextColor3 = C_TEXT_WHITE
         label.Font = FONT_SEMIBOLD
-        label.TextSize = 11
+        label.TextSize = 16
         label.TextXAlignment = Enum.TextXAlignment.Left
-        label.TextYAlignment = Enum.TextYAlignment.Bottom
+        label.TextYAlignment = Enum.TextYAlignment.Center
 
         local divider = Instance.new("Frame", container)
         divider.Size = UDim2.new(1, -24, 0, 1)
         divider.Position = UDim2.new(0, 12, 1, -2)
         divider.BackgroundColor3 = C_BORDER
-        divider.BackgroundTransparency = 0.5
+        divider.BackgroundTransparency = 0.3
         divider.BorderSizePixel = 0
     end
 
@@ -1001,4 +1009,4 @@ _G.OWP_PetaHub_Unload = function()
     end
 end
 
-print("✅ PETAPETA: School of Nightmares V15.11 (Manually Sanitized & Verified) - Loaded")
+print("✅ PETAPETA: School of Nightmares V15.12 (Modern Section Headers - Option B) - Loaded")
