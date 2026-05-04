@@ -13,7 +13,7 @@ local isUnloaded = false
 local scriptConnections = {}
 
 --[[
-    PETAPETA: School of Nightmares V15.18 (Dynamic TP Raycast Fix)
+    PETAPETA: School of Nightmares V15.19 (Precision Floor Teleport Fix)
     By: OtherWisePop
     USE RESPONSIBLY AND AT YOUR OWN RISK.
 --]]
@@ -33,7 +33,7 @@ if not player then
 end
 local playerGui = player:WaitForChild("PlayerGui")
 
-local GUI_NAME = "OWP_PetaHub_V15_18_" .. tostring(math.random(10000, 99999))
+local GUI_NAME = "OWP_PetaHub_V15_19_" .. tostring(math.random(10000, 99999))
 local CONFIG_FILE_NAME = "OWP_PetaHub_Config.json"
 local FONT = Enum.Font.SourceSans
 local FONT_BOLD = Enum.Font.SourceSansBold
@@ -522,7 +522,7 @@ local FeatureList = {
     end}
 }
 
--- ================= 9. UI Generation =================
+-- ================= 9. UI Generation (Glassmorphism + Modern Section Headers) =================
 local activeScreenGui = nil
 local activeMainFrame = nil
 local isBuildingUI = false
@@ -695,6 +695,7 @@ local function BuildUI()
     Instance.new("UIPadding", scrollFrame).PaddingTop = UDim.new(0, 8)
     Instance.new("UIPadding", scrollFrame).PaddingBottom = UDim.new(0, 8)
 
+    -- Helper: Create Section Header
     local function CreateSectionHeader(sectionName, layoutOrder)
         local container = Instance.new("Frame", scrollFrame)
         container.Size = UDim2.new(1, -20, 0, 34)
@@ -729,6 +730,7 @@ local function BuildUI()
         divider.BorderSizePixel = 0
     end
 
+    -- Helper: Create Feature Button
     local function CreateButton(feature, order)
         local row = Instance.new("TextButton", scrollFrame)
         row.Size = UDim2.new(1, -20, 0, 36)
@@ -773,13 +775,12 @@ local function BuildUI()
         end
 
         local function updateVisuals(animate)
-            if not row.Parent then return end 
+            if not row.Parent then return end
             if feature.Type == "Toggle" then
                 local isOn = Config[feature.Key]
                 local targetBgColor = isOn and C_TOGGLE_ON_BG or C_TOGGLE_OFF_BG
                 local targetCircleColor = isOn and C_ACCENT_RED or C_TOGGLE_OFF_PILL
                 local targetPos = isOn and UDim2.new(1, -20, 0.5, 0) or UDim2.new(0, 2, 0.5, 0)
-
                 if animate then
                     TweenService:Create(indicatorBG, TOGGLE_TWEEN_INFO, {BackgroundColor3 = targetBgColor}):Play()
                     TweenService:Create(pillCircle, TOGGLE_TWEEN_INFO, {BackgroundColor3 = targetCircleColor, Position = targetPos}):Play()
@@ -791,10 +792,11 @@ local function BuildUI()
             elseif feature.Type == "Cycle" then
                 indicatorBG.BackgroundColor3 = C_TOGGLE_OFF_BG
                 local val = Config[feature.Key]
+                -- Map index to display value for Speed, otherwise show raw value
                 valueText.Text = (feature.Key == "SpeedIndex") and tostring(WALK_SPEEDS[val] or val) or tostring(val)
             end
         end
-        feature._updateVisuals = function() updateVisuals(false) end 
+        feature._updateVisuals = function() updateVisuals(false) end
 
         row.MouseButton1Click:Connect(function()
             if feature.Type == "Toggle" then
@@ -802,6 +804,7 @@ local function BuildUI()
             elseif feature.Type == "Cycle" then
                 local options = feature.CycleOptions
                 local current = Config[feature.Key]
+                -- Manual index search for maximum executor compatibility
                 local idx = 1
                 for i, v in ipairs(options) do
                     if v == current then idx = i; break end
@@ -819,10 +822,10 @@ local function BuildUI()
 
         row.MouseEnter:Connect(function() TweenService:Create(row, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 35)}):Play() end)
         row.MouseLeave:Connect(function() TweenService:Create(row, TweenInfo.new(0.2), {BackgroundColor3 = C_BG_ROW}):Play() end)
-
         updateVisuals(false)
     end
 
+    -- Dynamic Header & Button Injection
     local lastSection = nil
     local layoutCounter = 0
     for _, feature in ipairs(FeatureList) do
@@ -879,27 +882,26 @@ local function BuildUI()
                 end
             end
         end
-
+        
         if closestKey and closestPos then
-            --[SAFE TELEPORT FIX] Dynamic Y calculation via downward raycast
-            local rayOrigin = Vector3.new(closestPos.X, closestPos.Y + 12, closestPos.Z)
-            local rayDirection = Vector3.new(0, -20, 0)
+            -- [FIXED] Precision floor detection (eliminates +1 floor offset)
+            local rayOrigin = Vector3.new(closestPos.X, closestPos.Y + 2, closestPos.Z)
+            local rayDirection = Vector3.new(0, -10, 0)
             local rayParams = RaycastParams.new()
-            rayParams.FilterDescendantsInstances = {player.Character}
+            rayParams.FilterDescendantsInstances = {player.Character, closestKey}
             rayParams.FilterType = Enum.RaycastFilterType.Exclude
-
+            
             local rayResult = Workspace:Raycast(rayOrigin, rayDirection, rayParams)
-            local safeY = closestPos.Y + 3.5 -- Fallback if raycast misses
-
+            local safeY = closestPos.Y + 3.0 -- Fallback: direct offset above key
+            
             if rayResult and rayResult.Instance then
-                safeY = rayResult.Position.Y + 3.0 -- Safe HRP standing height above floor
+                safeY = rayResult.Position.Y + 3.0 -- Exact floor surface + HRP clearance
             end
-
+            
             local finalPos = Vector3.new(closestPos.X, safeY, closestPos.Z)
-            pcall(function()
-                root.CFrame = CFrame.new(finalPos) * root.CFrame.Rotation
+            pcall(function() 
+                root.CFrame = CFrame.new(finalPos) * root.CFrame.Rotation 
             end)
-
             Engine.TPCooldownEnd = tick() + TELEPORT_COOLDOWN
         else
             Engine.TPWarningText, Engine.TPWarningEnd = "❌ No Keys Found", tick() + 1.5
@@ -1018,4 +1020,4 @@ _G.OWP_PetaHub_Unload = function()
     end
 end
 
-print("✅ PETAPETA: School of Nightmares V15.18 (Dynamic TP Raycast Fix) - Loaded")
+print("✅ PETAPETA: School of Nightmares V15.19 (Precision Floor Teleport Fix) - Loaded")
