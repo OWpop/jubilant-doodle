@@ -13,7 +13,7 @@ local isUnloaded = false
 local scriptConnections = {}
 
 --[[
-    PETAPETA: School of Nightmares V15.17 (Syntax & Initialization Fix)
+    PETAPETA: School of Nightmares V15.18 (Dynamic TP Raycast Fix)
     By: OtherWisePop
     USE RESPONSIBLY AND AT YOUR OWN RISK.
 --]]
@@ -33,7 +33,7 @@ if not player then
 end
 local playerGui = player:WaitForChild("PlayerGui")
 
-local GUI_NAME = "OWP_PetaHub_V15_17_" .. tostring(math.random(10000, 99999))
+local GUI_NAME = "OWP_PetaHub_V15_18_" .. tostring(math.random(10000, 99999))
 local CONFIG_FILE_NAME = "OWP_PetaHub_Config.json"
 local FONT = Enum.Font.SourceSans
 local FONT_BOLD = Enum.Font.SourceSansBold
@@ -139,10 +139,11 @@ end
 
 LoadConfig()
 
--- Strict Config Validation
+-- Strict Config Validation (Prevents nil/type corruption)
 if type(Config.SpeedIndex) ~= "number" or Config.SpeedIndex < 1 or Config.SpeedIndex > #WALK_SPEEDS then
     Config.SpeedIndex = 2
 end
+
 Config.GuiVisible = false
 
 -- ================= 4. Helper Functions =================
@@ -536,6 +537,7 @@ local function BuildUI()
     screenGui.Name = GUI_NAME
     screenGui.ResetOnSpawn = false
 
+    -- Toggle Button Glassmorphism
     local toggleButton = Instance.new("TextButton", screenGui)
     toggleButton.Size = TOGGLE_BUTTON_SIZE
     toggleButton.Position = TOGGLE_BUTTON_POS
@@ -563,6 +565,7 @@ local function BuildUI()
     bottomAccent.BackgroundTransparency = 0.3
     bottomAccent.BorderSizePixel = 0
 
+    -- Teleport HUD Button Glassmorphism
     local tpButton = Instance.new("TextButton", screenGui)
     tpButton.Size = UDim2.new(0, 130, 0, 32)
     tpButton.Position = UDim2.new(0, 10, 0, 48)
@@ -583,6 +586,7 @@ local function BuildUI()
     tpGlassStroke.Thickness = 1.5
     Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 12)
 
+    -- Main Hub Frame
     local mainFrame = Instance.new("Frame", screenGui)
     mainFrame.Size = UDim2.new(0, MENU_WIDTH, 0, MENU_HEIGHT_OPEN)
     mainFrame.Position = UDim2.new(0, -MENU_WIDTH - 30, Engine.SavedMenuPosition.Y.Scale, Engine.SavedMenuPosition.Y.Offset)
@@ -592,6 +596,7 @@ local function BuildUI()
     Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 8)
     Instance.new("UIStroke", mainFrame).Color = C_BORDER
 
+    -- Title Bar
     local titleBar = Instance.new("Frame", mainFrame)
     titleBar.Size = UDim2.new(1, 0, 0, MENU_HEIGHT_MINIMIZED)
     titleBar.BackgroundColor3 = C_BG_TITLE
@@ -768,7 +773,7 @@ local function BuildUI()
         end
 
         local function updateVisuals(animate)
-            if not row.Parent then return end
+            if not row.Parent then return end 
             if feature.Type == "Toggle" then
                 local isOn = Config[feature.Key]
                 local targetBgColor = isOn and C_TOGGLE_ON_BG or C_TOGGLE_OFF_BG
@@ -789,7 +794,7 @@ local function BuildUI()
                 valueText.Text = (feature.Key == "SpeedIndex") and tostring(WALK_SPEEDS[val] or val) or tostring(val)
             end
         end
-        feature._updateVisuals = function() updateVisuals(false) end
+        feature._updateVisuals = function() updateVisuals(false) end 
 
         row.MouseButton1Click:Connect(function()
             if feature.Type == "Toggle" then
@@ -856,6 +861,7 @@ local function BuildUI()
         if isPlayerHoldingAnyKey() then Engine.TPWarningText, Engine.TPWarningEnd = "❌ Clear Hands!", tick() + 1.5 return end
         local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
         if not root then Engine.TPWarningText, Engine.TPWarningEnd = "❌ Not Ready", tick() + 1.5 return end
+        
         local closestKey, closestPos, minDistance = nil, nil, math.huge
         for _, obj in ipairs(GetDictKeys(Engine.Cache.Keys)) do
             if isItemOnGround(obj) then
@@ -873,8 +879,27 @@ local function BuildUI()
                 end
             end
         end
+
         if closestKey and closestPos then
-            pcall(function() root.CFrame = CFrame.new(closestPos + Vector3.new(0, TELEPORT_VERTICAL_OFFSET, 0)) * root.CFrame.Rotation end)
+            --[SAFE TELEPORT FIX] Dynamic Y calculation via downward raycast
+            local rayOrigin = Vector3.new(closestPos.X, closestPos.Y + 12, closestPos.Z)
+            local rayDirection = Vector3.new(0, -20, 0)
+            local rayParams = RaycastParams.new()
+            rayParams.FilterDescendantsInstances = {player.Character}
+            rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+            local rayResult = Workspace:Raycast(rayOrigin, rayDirection, rayParams)
+            local safeY = closestPos.Y + 3.5 -- Fallback if raycast misses
+
+            if rayResult and rayResult.Instance then
+                safeY = rayResult.Position.Y + 3.0 -- Safe HRP standing height above floor
+            end
+
+            local finalPos = Vector3.new(closestPos.X, safeY, closestPos.Z)
+            pcall(function()
+                root.CFrame = CFrame.new(finalPos) * root.CFrame.Rotation
+            end)
+
             Engine.TPCooldownEnd = tick() + TELEPORT_COOLDOWN
         else
             Engine.TPWarningText, Engine.TPWarningEnd = "❌ No Keys Found", tick() + 1.5
@@ -993,4 +1018,4 @@ _G.OWP_PetaHub_Unload = function()
     end
 end
 
-print("✅ PETAPETA: School of Nightmares V15.17 (Syntax & Initialization Fix) - Loaded")
+print("✅ PETAPETA: School of Nightmares V15.18 (Dynamic TP Raycast Fix) - Loaded")
